@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#8b6914">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Atomica">
+<link id="pwa-manifest" rel="manifest">
 <title>Atomica</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -97,6 +102,14 @@ const fromDoc=d=>{const f=d.fields||{};return{id:d.name.split("/").pop(),glyph:f
 async function fbFetch(cfg){const r=await fetch(`${fbBase(cfg)}?key=${cfg.apiKey}&pageSize=200`);if(!r.ok){const e=await r.json();throw new Error(e.error?.message||r.status)}const d=await r.json();return(d.documents||[]).map(fromDoc)}
 async function fbSave(cfg,note){const r=await fetch(`${fbBase(cfg)}/${note.id}?key=${cfg.apiKey}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(toDoc(note))});if(!r.ok){const e=await r.json();throw new Error(e.error?.message||r.status)}return fromDoc(await r.json())}
 async function fbDel(cfg,id){await fetch(`${fbBase(cfg)}/${id}?key=${cfg.apiKey}`,{method:"DELETE"})}
+
+// ── FIREBASE BIBLIOTECA ───────────────────────────────────
+const fbBaseBib=cfg=>`https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/atomica_biblioteca`;
+const toBibDoc=t=>({fields:{tipo:{stringValue:t.tipo||"articolo"},autore:{stringValue:t.autore||""},titolo:{stringValue:t.titolo||""},testata:{stringValue:t.testata||""},opera:{stringValue:t.opera||""},riferimento:{stringValue:t.riferimento||""},pagina:{stringValue:t.pagina||""},testo:{stringValue:t.testo||""},tags:{arrayValue:{values:(t.tags||[]).map(tg=>({stringValue:tg}))}},created:{integerValue:String(t.created||Date.now())}}});
+const fromBibDoc=d=>{const f=d.fields||{};return{id:d.name.split("/").pop(),tipo:f.tipo?.stringValue||"articolo",autore:f.autore?.stringValue||"",titolo:f.titolo?.stringValue||"",testata:f.testata?.stringValue||"",opera:f.opera?.stringValue||"",riferimento:f.riferimento?.stringValue||"",pagina:f.pagina?.stringValue||"",testo:f.testo?.stringValue||"",tags:f.tags?.arrayValue?.values?.map(v=>v.stringValue)||[],created:parseInt(f.created?.integerValue||Date.now())};};
+async function fbFetchBib(cfg){const r=await fetch(`${fbBaseBib(cfg)}?key=${cfg.apiKey}&pageSize=500`);if(!r.ok){const e=await r.json();throw new Error(e.error?.message||r.status)}const d=await r.json();return(d.documents||[]).map(fromBibDoc)}
+async function fbSaveBib(cfg,t){const r=await fetch(`${fbBaseBib(cfg)}/${t.id}?key=${cfg.apiKey}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(toBibDoc(t))});if(!r.ok){const e=await r.json();throw new Error(e.error?.message||r.status)}}
+async function fbDelBib(cfg,id){await fetch(`${fbBaseBib(cfg)}/${id}?key=${cfg.apiKey}`,{method:"DELETE"})}
 function toMarkdown(notes){return notes.map(n=>{const f=n.fonte;const fs=f?.tipo?`\n*Fonte: ${[f.tipo,f.autori,f.opera,f.riferimento].filter(Boolean).join(" — ")}*`:"";return`${hasTitolo(n)?`# ${n.glyph} ${n.title}\n\n`:`${n.glyph} `}*${fmtD(n.created)}*${fs}\n\n${n.body}${n.tags.length?"\n\nTag: "+n.tags.map(t=>"#"+t).join(" "):""}`}).join("\n\n---\n\n")}
 function dlFile(c,n,t){const b=new Blob([c],{type:t});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=n;a.click();URL.revokeObjectURL(u)}
 
@@ -120,7 +133,19 @@ const S={
 };
 
 let syncTimer=null;
-function schedSync(){if(!S.fbCfg)return;clearTimeout(syncTimer);syncTimer=setTimeout(async()=>{S.syncStatus="syncing";rHdr();try{await Promise.all(S.notes.map(n=>fbSave(S.fbCfg,n)));S.syncStatus="synced";}catch(e){S.syncStatus="error";}rHdr();},1200);}
+function schedSync(){
+  if(!S.fbCfg)return;
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(async()=>{
+    S.syncStatus="syncing";rHdr();
+    try{
+      await Promise.all(S.notes.map(n=>fbSave(S.fbCfg,n)));
+      await Promise.all(S.biblioteca.map(t=>fbSaveBib(S.fbCfg,t)));
+      S.syncStatus="synced";
+    }catch(e){S.syncStatus="error";}
+    rHdr();
+  },1200);
+}
 function persist(){lsSet("atomica_v5",S.notes);lsSet("atomica_bib",S.biblioteca);schedSync();}
 
 // ── SIDEBAR ───────────────────────────────────────────────
@@ -176,6 +201,10 @@ function sidebarHtml(){
   const soItems=[["created","Data"],["alpha","A→Z"],["glyph","Categoria"]].map(([k,l])=>`<button onclick="setSort('${k}')" style="display:block;width:100%;text-align:left;background:${S.sort===k?"#f5f0e8":"transparent"};border:1px solid ${S.sort===k?"#d8c890":"transparent"};border-radius:4px;padding:6px 8px;color:${S.sort===k?"#8b6914":"#6a6050"};font-size:12px;margin-bottom:3px;font-weight:${S.sort===k?"600":"400"}">${S.sort===k?"▸ ":"  "}${l}</button>`).join("");
   return`<div id="sidebar" style="background:#fff;border-right:1px solid #e0d8ce;width:240px;flex-shrink:0;overflow-y:auto;padding:16px 12px">
     <div style="margin-bottom:18px">
+      <button onclick="showSc('impostazioni');closeSidebar()" style="display:flex;align-items:center;gap:8px;background:#fdf8f0;border:1px solid #e8d8b0;border-radius:8px;padding:10px 12px;width:100%;margin-bottom:8px">
+        <span style="font-size:18px">⚙</span>
+        <div style="text-align:left;flex:1"><div style="font-family:Georgia,serif;font-size:13px;font-weight:700;color:#8b6914">Impostazioni</div><div style="font-size:9px;color:#b0a080">Firebase sync</div></div>
+      </button>
       <button onclick="showSc('biblioteca');closeSidebar()" style="display:flex;align-items:center;gap:8px;background:#fdf8f0;border:1px solid #e8d8b0;border-radius:8px;padding:10px 12px;width:100%;color:#8b6914">
         <span style="font-size:18px">📚</span>
         <div style="text-align:left"><div style="font-family:Georgia,serif;font-size:13px;font-weight:700">Biblioteca</div><div style="font-size:9px;color:#b0a080">${S.biblioteca.length} testi archiviati</div></div>
@@ -316,7 +345,14 @@ function rEdit(){
           <div class="fld"><div class="sec-lbl">Riferimento</div><input id="fri" value="${esc(f.riferimento)}" placeholder="es. 16/03/2026"></div>
           <div class="fld"><div class="sec-lbl">Pagina</div><input id="fpg" value="${esc(f.pagina)}" placeholder="es. 21"></div>
         </div>
-      </div>`:""}
+      </div>`:`<div style="border-top:1px solid #ede8e0;padding-top:14px;margin-top:6px">
+        <div class="sec-lbl" style="margin-bottom:10px">Fonte <span style="color:#c0b090;font-weight:400;text-transform:none;letter-spacing:0">(facoltativa)</span></div>
+        <div class="row2">
+          <div class="fld"><div class="sec-lbl">Autore</div><input id="qau" value="${esc(f.autori)}" placeholder="es. Mario Sechi"></div>
+          <div class="fld"><div class="sec-lbl">Testata / Opera</div><input id="qop" value="${esc(f.opera)}" placeholder="es. Libero"></div>
+        </div>
+        <div class="fld"><div class="sec-lbl">Data / Riferimento</div><input id="qri" value="${esc(f.riferimento)}" placeholder="es. 16/03/2026"></div>
+      </div>`}
       <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
         <input type="checkbox" id="ep" ${n.pinned?"checked":""} style="accent-color:#8b6914;width:16px;height:16px">
         <label for="ep" style="color:#5a5040;font-size:12px;cursor:pointer">Fissa in cima ◆</label>
@@ -373,6 +409,14 @@ function rImpostazioni(){
       <div style="display:flex;gap:8px;justify-content:flex-end">
         <button onclick="connFb()" style="background:#8b6914;border:none;border-radius:6px;color:#fff;padding:10px 22px;font-size:13px;font-family:Georgia,serif;font-weight:700">Connetti</button>
       </div>
+      ${S.fbCfg?`<div style="margin-top:14px;padding-top:14px;border-top:1px solid #ede8e0">
+        <div class="sec-lbl" style="margin-bottom:8px">Forza upload Biblioteca</div>
+        <div style="font-size:11px;color:#9a8a6a;margin-bottom:10px">Carica manualmente i testi della Biblioteca su Firestore</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <button id="fsb-btn" onclick="forceSyncBib()" style="background:#4a7ab8;border:none;border-radius:6px;color:#fff;padding:8px 16px;font-size:12px;font-family:Georgia,serif;font-weight:700">↑ Carica Biblioteca (${S.biblioteca.length} testi)</button>
+          <span id="fsb-status" style="font-size:11px;color:#a09080"></span>
+        </div>
+      </div>`:""}
     </div>
 
     <!-- Anthropic -->
@@ -387,15 +431,29 @@ function rImpostazioni(){
         <button onclick="saveAK()" style="background:#5040a0;border:none;border-radius:6px;color:#fff;padding:10px 22px;font-size:13px;font-family:Georgia,serif;font-weight:700">Salva key</button>
       </div>
     </div>
+
+    <!-- Hosting web -->
+    <div style="background:#fff;border:1px solid #e0d8ce;border-radius:12px;padding:20px;margin-top:14px">
+      <div style="font-family:Georgia,serif;font-size:15px;font-weight:700;color:#1a1410;margin-bottom:4px">🌐 Accesso web / PWA</div>
+      <div style="font-size:11px;color:#9a8a6a;margin-bottom:14px">Carica su Netsons per accedere da qualsiasi dispositivo e installare come app</div>
+      <div style="background:#f5f2ed;border:1px solid #e0d8ce;border-radius:8px;padding:14px;font-size:11px;color:#5a5040;line-height:2.2">
+        <div><strong>1.</strong> Scarica il file aggiornato: <button onclick="dlSelf()" style="background:#8b6914;border:none;border-radius:4px;color:#fff;padding:4px 12px;font-size:11px;font-family:'Courier New',monospace;cursor:pointer">↓ atomica.html</button></div>
+        <div><strong>2.</strong> FTP/cPanel → carica in <code style="background:#e8e0d4;padding:1px 5px;border-radius:3px">public_html/atomica/index.html</code></div>
+        <div><strong>3.</strong> Apri da browser: <code style="background:#e8e0d4;padding:1px 5px;border-radius:3px">tuodominio.it/atomica/</code></div>
+        <div><strong>4.</strong> Su mobile → menu browser → <em>Aggiungi a schermata Home</em></div>
+      </div>
+      <div style="font-size:10px;color:#b0a0c0;margin-top:10px;line-height:1.6">⚠ API key Anthropic e Firebase vanno configurate su ogni nuovo browser (localStorage, non cloud)</div>
+    </div>
   </div>`;
 }
 
 // ── SCREEN: BIBLIOTECA ────────────────────────────────────
 function rBiblioteca(){
+  const isMobile=window.innerWidth<=680;
   const testi=S.biblioteca;
   const autori=[...new Set(testi.map(t=>t.autore).filter(Boolean))].sort();
   let filtrati=S.bibAutore?testi.filter(t=>t.autore===S.bibAutore):testi;
-  if(S.bibSearch){const q=S.bibSearch.toLowerCase();filtrati=filtrati.filter(t=>(t.autore||"").toLowerCase().includes(q)||(t.titolo||"").toLowerCase().includes(q)||(t.opera||"").toLowerCase().includes(q)||(t.testata||"").toLowerCase().includes(q));}
+  if(S.bibSearch){const q=S.bibSearch.toLowerCase();filtrati=filtrati.filter(t=>(t.autore||"").toLowerCase().includes(q)||(t.titolo||"").toLowerCase().includes(q)||(t.opera||"").toLowerCase().includes(q)||(t.testata||"").toLowerCase().includes(q)||(t.tags||[]).some(tg=>tg.includes(q)));}
   
   const byAutore={};
   filtrati.forEach(t=>{const a=t.autore||"— Autore sconosciuto";if(!byAutore[a])byAutore[a]=[];byAutore[a].push(t);});
@@ -407,14 +465,16 @@ function rBiblioteca(){
       <div style="flex:1;min-width:0">
         <div style="font-family:Georgia,serif;font-size:14px;font-weight:700;color:#1a1410;margin-bottom:3px;line-height:1.3">${esc(t.titolo||"Senza titolo")}</div>
         <div style="font-size:11px;color:#9a8070;margin-bottom:6px">${esc(t.tipo==="articolo"?t.testata:t.opera)||""}${t.riferimento?" · "+esc(t.riferimento):""}</div>
+        ${(t.tags||[]).length?`<div style="margin-bottom:6px">${(t.tags||[]).map(tg=>`<span class="pill">#${tg}</span>`).join("")}</div>`:""}
         <div style="font-size:10px;color:#b0a090;line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${esc((t.testo||"").slice(0,140))}…</div>
       </div>
     </div>
   </div>`;
   
-  const gruppi=sortedA.map(a=>`<div style="margin-bottom:24px">
+  window._bibAutori=sortedA;
+  const gruppi=sortedA.map((a,ai)=>`<div style="margin-bottom:24px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-      <div style="font-family:Georgia,serif;font-size:15px;font-weight:700;color:#2a2010">${esc(a)}</div>
+      <div style="font-family:Georgia,serif;font-size:15px;font-weight:700;color:#8b6914;cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-style:dotted" onclick="var a=window._bibAutori[${ai}];S.bibAutore=S.bibAutore===a?null:a;rCnt()" title="Filtra per autore">${esc(a)}</div>
       <div style="flex:1;height:1px;background:#e0d8ce"></div>
       <span style="font-size:9px;color:#b0a080">${byAutore[a].length} test${byAutore[a].length===1?"o":"i"}</span>
     </div>
@@ -422,8 +482,8 @@ function rBiblioteca(){
   </div>`).join("");
   
   document.getElementById("cnt").innerHTML=`<div style="display:flex;height:100%;overflow:hidden">
-    <!-- sidebar autori -->
-    <div style="width:190px;flex-shrink:0;background:#fff;border-right:1px solid #e0d8ce;padding:14px 10px;overflow-y:auto">
+    <!-- sidebar autori: nascosta su mobile -->
+    <div style="width:190px;flex-shrink:0;background:#fff;border-right:1px solid #e0d8ce;padding:14px 10px;overflow-y:auto;display:${isMobile?'none':'block'}">
       <div class="sec-lbl">Autori</div>
       <button onclick="S.bibAutore=null;rCnt()" style="display:block;width:100%;text-align:left;background:${!S.bibAutore?"#fdf8f0":"transparent"};border:1px solid ${!S.bibAutore?"#e8d8b0":"transparent"};border-radius:6px;padding:7px 8px;color:${!S.bibAutore?"#8b6914":"#5a5040"};font-size:12px;margin-bottom:3px;font-weight:${!S.bibAutore?"700":"400"}">Tutti <span style="color:#c0b090">(${testi.length})</span></button>
       ${autori.map(a=>`<button onclick="S.bibAutore=${JSON.stringify(a)};rCnt()" style="display:block;width:100%;text-align:left;background:${S.bibAutore===a?"#fdf8f0":"transparent"};border:1px solid ${S.bibAutore===a?"#e8d8b0":"transparent"};border-radius:6px;padding:7px 8px;color:${S.bibAutore===a?"#8b6914":"#5a5040"};font-size:11px;margin-bottom:2px;font-weight:${S.bibAutore===a?"700":"400"};overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(a)}">${esc(a)} <span style="color:#c0b090">(${testi.filter(t=>t.autore===a).length})</span></button>`).join("")}
@@ -461,12 +521,17 @@ function switchTipoTesto(tipo){
     opera:document.getElementById("top")?.value?.trim()||S.editTesto?.opera||"",
     pagina:document.getElementById("tpg")?.value?.trim()||S.editTesto?.pagina||"",
     testo:document.getElementById("tbo")?.value||S.editTesto?.testo||"",
+    tags:S.editTesto?.tags||[],
   };
   rTestoEdit();
 }
 
+function addBibTag(){const i=document.getElementById("btag");if(!i)return;const tg=i.value.trim().toLowerCase().replace(/\s+/g,"-");if(!tg||(S.editTesto.tags||[]).includes(tg))return;S.editTesto={...S.editTesto,tags:[...(S.editTesto.tags||[]),tg]};i.value="";const d=document.getElementById("btd");if(d)d.innerHTML=bibTagHtml(S.editTesto.tags);}
+function remBibTag(tg){S.editTesto={...S.editTesto,tags:(S.editTesto.tags||[]).filter(x=>x!==tg)};const d=document.getElementById("btd");if(d)d.innerHTML=bibTagHtml(S.editTesto.tags);}
+function bibTagHtml(tags){return(tags||[]).map(tg=>`<span style="background:#f0ece4;border:1px solid #d8d0c4;border-radius:8px;padding:3px 9px;font-size:11px;color:#5a5040;margin:2px;display:inline-flex;align-items:center;gap:4px">${esc(tg)}<button onclick="remBibTag('${tg}')" style="background:none;border:none;color:#b09070;font-size:13px;cursor:pointer;padding:0;line-height:1">×</button></span>`).join("");}
+
 function rTestoEdit(){
-  const t=S.editTesto||{tipo:"articolo",autore:"",titolo:"",testata:"",opera:"",riferimento:"",pagina:"",testo:""};
+  const t=S.editTesto||{tipo:"articolo",autore:"",titolo:"",testata:"",opera:"",riferimento:"",pagina:"",testo:"",tags:[]};
   const isNew=!t.id;
   document.getElementById("cnt").innerHTML=`<div style="flex:1;max-width:680px;margin:0 auto;padding:18px 16px 120px;overflow-y:auto;width:100%">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:18px">
@@ -494,6 +559,14 @@ function rTestoEdit(){
       <div class="fld">
         <div class="sec-lbl">Testo <span style="color:#c0b090;font-weight:400;text-transform:none;letter-spacing:0">(incolla il contenuto integrale)</span></div>
         <textarea id="tbo" rows="13" placeholder="Incolla qui l'articolo o il brano…" style="resize:vertical;line-height:1.8;font-family:Georgia,serif;font-size:14px">${esc(t.testo)}</textarea>
+      </div>
+      <div class="fld">
+        <div class="sec-lbl">Tag</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <input id="btag" placeholder="Aggiungi tag + Invio" onkeydown="if(event.key==='Enter'){event.preventDefault();addBibTag()}">
+          <button onclick="addBibTag()" style="background:#8b6914;border:none;border-radius:6px;color:#fff;padding:10px 14px;font-size:14px;flex-shrink:0">＋</button>
+        </div>
+        <div id="btd">${bibTagHtml(t.tags||[])}</div>
       </div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
@@ -631,10 +704,10 @@ function rAtomizza(){
 }
 
 // ── AZIONI BIBLIOTECA ─────────────────────────────────────
-function newTesto(){S.editTesto={tipo:"articolo",autore:"",titolo:"",testata:"",opera:"",riferimento:"",pagina:"",testo:""};showSc("testo-edit");}
+function newTesto(){S.editTesto={tipo:"articolo",autore:"",titolo:"",testata:"",opera:"",riferimento:"",pagina:"",testo:"",tags:[]};showSc("testo-edit");}
 function editTesto(id){S.editTesto={...(S.biblioteca.find(t=>t.id===id)||{})};showSc("testo-edit");}
 function viewTesto(id){S.activeTesto=S.biblioteca.find(t=>t.id===id);showSc("testo-detail");}
-function delTesto(id){if(!confirm("Eliminare questo testo dalla Biblioteca?"))return;S.biblioteca=S.biblioteca.filter(t=>t.id!==id);if(S.activeTesto?.id===id)S.activeTesto=null;persist();showSc("biblioteca");}
+async function delTesto(id){if(!confirm("Eliminare questo testo dalla Biblioteca?"))return;if(S.fbCfg){try{await fbDelBib(S.fbCfg,id)}catch(e){}}S.biblioteca=S.biblioteca.filter(t=>t.id!==id);if(S.activeTesto?.id===id)S.activeTesto=null;persist();showSc("biblioteca");}
 
 function saveTesto(){
   const tipo=S.editTesto?.tipo||"articolo";
@@ -647,6 +720,7 @@ function saveTesto(){
     opera:tipo==="brano"?(document.getElementById("top")?.value?.trim()||""):"",
     pagina:tipo==="brano"?(document.getElementById("tpg")?.value?.trim()||""):"",
     testo:document.getElementById("tbo")?.value?.trim()||"",
+    tags:S.editTesto?.tags||[],
     id:S.editTesto?.id||uid(),
     created:S.editTesto?.created||Date.now(),
     tipo,
@@ -758,16 +832,45 @@ async function delN(id){if(S.fbCfg){try{await fbDel(S.fbCfg,id)}catch(e){}}S.not
 function setEG(g){const b=document.getElementById("eb")?.value||"";const ti=document.getElementById("et")?.value||"";const p=document.getElementById("ep")?.checked||false;S.editNote={...S.editNote,glyph:g,body:b,title:ti,pinned:p};rEdit();}
 function addET(){const i=document.getElementById("etag");if(!i)return;const t=i.value.trim().toLowerCase().replace(/\s+/g,"-");if(!t||(S.editNote.tags||[]).includes(t))return;S.editNote={...S.editNote,tags:[...(S.editNote.tags||[]),t]};i.value="";const d=document.getElementById("etd");if(d)d.innerHTML=(S.editNote.tags||[]).map(t=>`<span style="background:#f0ece4;border:1px solid #d8d0c4;border-radius:8px;padding:3px 9px;font-size:11px;color:#5a5040;margin:2px;display:inline-flex;align-items:center;gap:4px">${esc(t)}<button onclick="remET('${t}')" style="background:none;border:none;color:#b09070;font-size:13px;cursor:pointer;padding:0;line-height:1">×</button></span>`).join("");}
 function remET(t){S.editNote={...S.editNote,tags:(S.editNote.tags||[]).filter(x=>x!==t)};const d=document.getElementById("etd");if(d)d.innerHTML=(S.editNote.tags||[]).map(t=>`<span style="background:#f0ece4;border:1px solid #d8d0c4;border-radius:8px;padding:3px 9px;font-size:11px;color:#5a5040;margin:2px;display:inline-flex;align-items:center;gap:4px">${esc(t)}<button onclick="remET('${t}')" style="background:none;border:none;color:#b09070;font-size:13px;cursor:pointer;padding:0;line-height:1">×</button></span>`).join("");}
-function saveN(){const body=document.getElementById("eb")?.value?.trim()||"";if(!body)return;const title=document.getElementById("et")?.value?.trim()||"";const pinned=document.getElementById("ep")?.checked||false;const fonte=S.quickMode?{tipo:"",autori:"",opera:"",riferimento:"",pagina:""}:{tipo:document.getElementById("ftp")?.value||"",autori:document.getElementById("fau")?.value?.trim()||"",opera:document.getElementById("fop")?.value?.trim()||"",riferimento:document.getElementById("fri")?.value?.trim()||"",pagina:document.getElementById("fpg")?.value?.trim()||""};const note={...(S.editNote||{}),title,body,pinned,fonte,id:S.editNote?.id||uid(),created:S.editNote?.created||Date.now()};const i=S.notes.findIndex(n=>n.id===note.id);if(i>=0){const a=[...S.notes];a[i]=note;S.notes=a;}else{S.notes=[note,...S.notes];}S.activeNote=note;S.quickMode=false;persist();showSc("detail");}
+function saveN(){const body=document.getElementById("eb")?.value?.trim()||"";if(!body)return;const title=document.getElementById("et")?.value?.trim()||"";const pinned=document.getElementById("ep")?.checked||false;const fonte=S.quickMode?{tipo:"",autori:document.getElementById("qau")?.value?.trim()||"",opera:document.getElementById("qop")?.value?.trim()||"",riferimento:document.getElementById("qri")?.value?.trim()||"",pagina:""}:{tipo:document.getElementById("ftp")?.value||"",autori:document.getElementById("fau")?.value?.trim()||"",opera:document.getElementById("fop")?.value?.trim()||"",riferimento:document.getElementById("fri")?.value?.trim()||"",pagina:document.getElementById("fpg")?.value?.trim()||""};const note={...(S.editNote||{}),title,body,pinned,fonte,id:S.editNote?.id||uid(),created:S.editNote?.created||Date.now()};const i=S.notes.findIndex(n=>n.id===note.id);if(i>=0){const a=[...S.notes];a[i]=note;S.notes=a;}else{S.notes=[note,...S.notes];}S.activeNote=note;S.quickMode=false;persist();showSc("detail");}
 function doExp(){const ns=S.expScope==="pinned"?S.notes.filter(n=>n.pinned):S.notes;const c=S.expFmt==="json"?JSON.stringify(ns,null,2):toMarkdown(ns);dlFile(c,`atomica_${Date.now()}.${S.expFmt}`,S.expFmt==="json"?"application/json":"text/markdown");}
-async function connFb(){const pid=document.getElementById("fpid")?.value?.trim();const key=document.getElementById("fkey")?.value?.trim();if(!pid||!key)return;const errEl=document.getElementById("fberr");if(errEl)errEl.style.display="none";S.syncStatus="syncing";rHdr();try{const cfg={projectId:pid,apiKey:key};await fbFetch(cfg);await Promise.all(S.notes.map(n=>fbSave(cfg,n)));S.fbCfg=cfg;lsSet("atomica_fb",cfg);S.syncStatus="synced";rHdr();showSc("list");}catch(e){S.syncStatus="error";rHdr();if(errEl){errEl.textContent="Errore: "+e.message;errEl.style.display="block";}}}
+async function connFb(){const pid=document.getElementById("fpid")?.value?.trim();const key=document.getElementById("fkey")?.value?.trim();if(!pid||!key)return;const errEl=document.getElementById("fberr");if(errEl)errEl.style.display="none";S.syncStatus="syncing";rHdr();try{const cfg={projectId:pid,apiKey:key};await fbFetch(cfg);await Promise.all(S.notes.map(n=>fbSave(cfg,n)));await Promise.all(S.biblioteca.map(t=>fbSaveBib(cfg,t)));S.fbCfg=cfg;lsSet("atomica_fb",cfg);S.syncStatus="synced";rHdr();showSc("list");}catch(e){S.syncStatus="error";rHdr();if(errEl){errEl.textContent="Errore: "+e.message;errEl.style.display="block";}}}
 function discFb(){S.fbCfg=null;lsSet("atomica_fb",null);S.syncStatus="offline";rHdr();showSc("list");}
 function saveAK(){const k=document.getElementById("akkey")?.value?.trim()||"";S.anthropicKey=k;lsSet("atomica_ak",k);rHdr();showSc("list");}
+function dlSelf(){const src=document.documentElement.outerHTML;dlFile(src,"atomica.html","text/html");}
+
+async function forceSyncBib(){
+  if(!S.fbCfg){alert("Firebase non configurato.");return;}
+  const btn=document.getElementById("fsb-btn");
+  const st=document.getElementById("fsb-status");
+  if(btn)btn.disabled=true;
+  if(st){st.textContent="Upload in corso…";st.style.color="#a07010";}
+  try{
+    await Promise.all(S.biblioteca.map(t=>fbSaveBib(S.fbCfg,t)));
+    if(st){st.textContent="✓ "+S.biblioteca.length+" testi caricati su Firestore";st.style.color="#2a7a3a";}
+  }catch(e){
+    if(st){st.textContent="Errore: "+e.message;st.style.color="#b04030";}
+  }
+  if(btn)btn.disabled=false;
+}
 
 // ── INIT ──────────────────────────────────────────────────
+// PWA manifest inline
+(()=>{const m={name:"Atomica",short_name:"Atomica",description:"Note Glifate",start_url:"./",display:"standalone",background_color:"#f5f2ed",theme_color:"#8b6914",icons:[{src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%238b6914'/><text y='.9em' font-size='80' x='10'>⚗</text></svg>",sizes:"any",type:"image/svg+xml"}]};const b=new Blob([JSON.stringify(m)],{type:"application/manifest+json"});document.getElementById("pwa-manifest").href=URL.createObjectURL(b);})();
+
+// Service worker per PWA
+if("serviceWorker"in navigator){navigator.serviceWorker.register("data:text/javascript,self.addEventListener('fetch',e=>e.respondWith(fetch(e.request).catch(()=>caches.match(e.request))))").catch(()=>{});}
+
 window.addEventListener("resize",()=>rHdr());
 rHdr();rCnt();
-if(S.fbCfg){S.syncStatus="syncing";rHdr();fbFetch(S.fbCfg).then(r=>{if(r.length>0){S.notes=r;lsSet("atomica_v5",S.notes);}S.syncStatus="synced";rHdr();rCnt();}).catch(()=>{S.syncStatus="error";rHdr();});}
+if(S.fbCfg){
+  S.syncStatus="syncing";rHdr();
+  Promise.all([fbFetch(S.fbCfg),fbFetchBib(S.fbCfg)]).then(([notes,bib])=>{
+    if(notes.length>0){S.notes=notes;lsSet("atomica_v5",notes);}
+    if(bib.length>0){S.biblioteca=bib;lsSet("atomica_bib",bib);}
+    S.syncStatus="synced";rHdr();rCnt();
+  }).catch(()=>{S.syncStatus="error";rHdr();});
+}
 </script>
 </body>
 </html>
