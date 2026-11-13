@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Atomica</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:#f5f2ed;color:#1a1612;font-family:'Courier New',monospace;font-size:13px;height:100vh;height:100dvh;overflow:hidden}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:#ede9e3}::-webkit-scrollbar-thumb{background:#c8c0b0;border-radius:2px}
+input,textarea,select{font-family:'Courier New',monospace;color:#1a1612;background:#fff;border:1px solid #d0c8bc;border-radius:8px;padding:10px 12px;outline:none;font-size:14px;width:100%}
+input:focus,textarea:focus,select:focus{border-color:#8b6914;box-shadow:0 0 0 3px #8b691415}
+input::placeholder,textarea::placeholder{color:#b0a080}
+button{cursor:pointer;font-family:'Courier New',monospace}
+.ncard{background:#fff;border:1px solid #e0d8ce;border-radius:12px;padding:16px;cursor:pointer;position:relative;transition:all 0.15s;-webkit-user-select:none;user-select:none}
+.ncard:active{background:#faf7f2;transform:scale(0.98)}
+.tcard{background:#fff;border:1px solid #e0d8ce;border-radius:12px;padding:16px;cursor:pointer;transition:all 0.15s;-webkit-user-select:none;user-select:none}
+.tcard:active{background:#faf7f2;transform:scale(0.98)}
+.cand-card{background:#fff;border:2px solid #e0d8ce;border-radius:12px;padding:14px;transition:border-color 0.15s,background 0.15s;margin-bottom:10px}
+.cand-card.sel{border-color:#8b6914;background:#fffdf8}
+.pill{display:inline-block;background:#f0ece4;border:1px solid #d8d0c4;border-radius:9px;padding:2px 8px;font-size:10px;color:#6a5a40;margin:2px}
+.sec-lbl{font-size:9px;color:#a09080;letter-spacing:2px;text-transform:uppercase;font-weight:600;margin-bottom:8px}
+.fld{margin-bottom:16px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.glyph-btn{background:#f9f7f4;border:2px solid #e0d8ce;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:all 0.15s;padding:8px 6px;flex:1;min-width:0}
+.glyph-btn:active{transform:scale(0.95)}
+.bot-nav{display:none}
+#tt{position:fixed;background:#1a1410;color:#f0e8d8;font-size:11px;font-family:'Courier New',monospace;padding:8px 12px;border-radius:7px;pointer-events:none;opacity:0;transition:opacity 0.15s;z-index:9999;line-height:1.6;max-width:200px}
+#sidebar-overlay{display:none;position:fixed;inset:0;background:#00000050;z-index:200}
+#sidebar{transition:transform 0.25s ease}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+@media(max-width:680px){
+  #sidebar{position:fixed;top:0;left:0;bottom:0;width:260px;z-index:300;transform:translateX(-100%)}
+  #sidebar.open{transform:translateX(0)}
+  #sidebar-overlay{display:block}
+  .bot-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e0d8ce;padding:8px 0 env(safe-area-inset-bottom,8px);z-index:100;justify-content:space-around}
+  #cnt-main{padding-bottom:80px!important}
+  .row2{grid-template-columns:1fr}
+  #app-hdr{padding:0 14px!important}
+  #app-hdr .hdr-search{display:none}
+  .hdr-extra{display:none!important}
+}
+</style>
+</head>
+<body>
+<div id="app" style="display:flex;flex-direction:column;height:100vh;height:100dvh">
+  <div id="app-hdr" style="background:#fff;border-bottom:1px solid #e0d8ce;padding:0 18px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 1px 3px #00000008;position:relative;z-index:50"></div>
+  <div id="cnt" style="flex:1;overflow:hidden;display:flex;position:relative"></div>
+</div>
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+<div id="tt"></div>
+<div class="bot-nav">
+  <button onclick="quickNote()" style="background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:2px;color:#8b6914;padding:4px 16px">
+    <span style="font-size:22px">⚡</span><span style="font-size:9px;letter-spacing:1px;text-transform:uppercase">Rapido</span>
+  </button>
+  <button onclick="newNote()" style="background:#8b6914;border:none;border-radius:50%;width:52px;height:52px;color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px #8b691450;margin-top:-14px">＋</button>
+  <button onclick="toggleSidebar()" style="background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:2px;color:#8a7a5a;padding:4px 16px">
+    <span style="font-size:22px">☰</span><span style="font-size:9px;letter-spacing:1px;text-transform:uppercase">Filtri</span>
+  </button>
+</div>
+
+<script>
+// ── COSTANTI ──────────────────────────────────────────────
+const GLYPHS=[
+  {s:"☿",l:"Citazione",c:"#4a7ab8",desc:"Frase altrui che vale per come è scritta",ex:"libri · giornali · trasmissioni · discorsi"},
+  {s:"∆",l:"Pensiero",c:"#7040a8",desc:"Concetto, tesi, ragionamento elaborato",ex:"riflessioni · analisi · conclusioni"},
+  {s:"⚙",l:"Azione",c:"#3a7a4a",desc:"Fare, costruire, andare, ispirazioni operative",ex:"luoghi · progetti · idee da realizzare"},
+  {s:"∅",l:"Dubbio",c:"#a84030",desc:"Domanda aperta, questione irrisolta",ex:"incertezze · domande · ipotesi"},
+];
+const GM=Object.fromEntries(GLYPHS.map(g=>[g.s,g]));
+const TIPI_FONTE=["","libro","articolo","rivista","citazione diretta","trasmissione TV/radio","conversazione","osservazione diretta","elaborazione propria"];
+
+// ── UTILITY ───────────────────────────────────────────────
+const uid=()=>Math.random().toString(36).slice(2,10);
+const fmtD=ts=>new Date(ts).toLocaleDateString("it-IT",{day:"2-digit",month:"short",year:"numeric"});
+const lsGet=(k,d)=>{try{return JSON.parse(localStorage.getItem(k)||"null")??d}catch{return d}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
+const esc=s=>(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const label=n=>n.title||(n.body||"").slice(0,65)+((n.body||"").length>65?"…":"");
+const hasTitolo=n=>!!(n.title&&n.title.trim());
+
+// ── SEED ──────────────────────────────────────────────────
+const SEED=[
+  {id:"s1",glyph:"☿",title:"",body:"Gli italiani perdonano tutto meno che il successo.",tags:["successo","invidia","italiani"],pinned:false,created:Date.now()-86400000*1,fonte:{tipo:"citazione diretta",autori:"Enzo Ferrari",opera:"",riferimento:"riportata da Leonardo Iannacci, Libero 16/03/2026",pagina:"21"}},
+  {id:"s2",glyph:"∆",title:"",body:"Una vita lunga senza larghezza è solo un elenco di rinunce.",tags:["vita","rinuncia","piacere"],pinned:true,created:Date.now()-86400000*4,fonte:{tipo:"libro",autori:"Casadio, Grandi",opera:"In vino felicitas",riferimento:"punto 6",pagina:""}},
+  {id:"s3",glyph:"☿",title:"",body:"Che ti sia lieve la terra.",tags:["morte","memoria"],pinned:false,created:Date.now()-86400000,fonte:{tipo:"articolo",autori:"Mario Sechi",opera:"Libero",riferimento:"16/03/2026",pagina:""}},
+  {id:"s4",glyph:"∆",title:"Terroir come memoria",body:"Il terroir non è solo suolo e clima — è memoria storica di un territorio, le scelte di generazioni, l'adattamento lento di una varietà. Non si replica.",tags:["viticoltura","concetto"],pinned:true,created:Date.now()-86400000*7,fonte:{tipo:"elaborazione propria",autori:"",opera:"",riferimento:"",pagina:""}},
+  {id:"s5",glyph:"⚙",title:"",body:"Visitare Ar.Pe.Pe a Sondrio — Nebbiolo delle Alpi, vigneti eroici.",tags:["vino","sondrio","cantina"],pinned:false,created:Date.now()-86400000*2,fonte:{tipo:"",autori:"",opera:"",riferimento:"",pagina:""}},
+  {id:"s6",glyph:"∅",title:"",body:"Contare calorie non rende immortali.",tags:["salutismo","piacere"],pinned:false,created:Date.now()-86400000*4,fonte:{tipo:"libro",autori:"Casadio, Grandi",opera:"In vino felicitas",riferimento:"punto 6",pagina:""}},
+];
+
+// ── FIREBASE ──────────────────────────────────────────────
+const fbBase=cfg=>`https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/atomica_notes`;
+const toDoc=n=>({fields:{glyph:{stringValue:n.glyph||"☿"},title:{stringValue:n.title||""},body:{stringValue:n.body||""},tags:{arrayValue:{values:(n.tags||[]).map(t=>({stringValue:t}))}},pinned:{booleanValue:!!n.pinned},created:{integerValue:String(n.created||Date.now())},fonte_tipo:{stringValue:n.fonte?.tipo||""},fonte_autori:{stringValue:n.fonte?.autori||""},fonte_opera:{stringValue:n.fonte?.opera||""},fonte_riferimento:{stringValue:n.fonte?.riferimento||""},fonte_pagina:{stringValue:n.fonte?.pagina||""}}});
+const fromDoc=d=>{const f=d.fields||{};return{id:d.name.split("/").pop(),glyph:f.glyph?.stringValue||"☿",title:f.title?.stringValue||"",body:f.body?.stringValue||"",tags:f.tags?.arrayValue?.values?.map(v=>v.stringValue)||[],pinned:f.pinned?.booleanValue||false,created:parseInt(f.created?.integerValue||Date.now()),fonte:{tipo:f.fonte_tipo?.stringValue||"",autori:f.fonte_autori?.stringValue||"",opera:f.fonte_opera?.stringValue||"",riferimento:f.fonte_riferimento?.stringValue||"",pagina:f.fonte_pagina?.stringValue||""}};};
+async function fbFetch(cfg){const r=await fetch(`${fbBase(cfg)}?key=${cfg.apiKey}&pageSize=200`);if(!r.ok){const e=await r.json();throw new Error(e.error?.message||r.status)}const d=await r.json();return(d.documents||[]).map(fromDoc)}
+async function fbSave(cfg,note){const r=await fetch(`${fbBase(cfg)}/${note.id}?key=${cfg.apiKey}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(toDoc(note))});if(!r.ok){const e=await r.json();throw new Error(e.error?.message||r.status)}return fromDoc(await r.json())}
+async function fbDel(cfg,id){await fetch(`${fbBase(cfg)}/${id}?key=${cfg.apiKey}`,{method:"DELETE"})}
+function toMarkdown(notes){return notes.map(n=>{const f=n.fonte;const fs=f?.tipo?`\n*Fonte: ${[f.tipo,f.autori,f.opera,f.riferimento].filter(Boolean).join(" — ")}*`:"";return`${hasTitolo(n)?`# ${n.glyph} ${n.title}\n\n`:`${n.glyph} `}*${fmtD(n.created)}*${fs}\n\n${n.body}${n.tags.length?"\n\nTag: "+n.tags.map(t=>"#"+t).join(" "):""}`}).join("\n\n---\n\n")}
+function dlFile(c,n,t){const b=new Blob([c],{type:t});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=n;a.click();URL.revokeObjectURL(u)}
+
+// ── STATO ─────────────────────────────────────────────────
+const S={
+  // note
+  notes:lsGet("atomica_v5",SEED),
+  screen:"list",activeNote:null,editNote:null,quickMode:false,
+  fbCfg:lsGet("atomica_fb",null),syncStatus:"offline",
+  search:"",fGlyph:null,fTag:null,sort:"created",
+  layout:lsGet("atomica_layout","vertical"),
+  expFmt:"json",expScope:"all",
+  // biblioteca
+  biblioteca:lsGet("atomica_bib",[]),
+  activeTesto:null,editTesto:null,bibSearch:"",bibAutore:null,
+  // atomizzatore
+  atomCandidates:[],atomStatus:"idle",atomError:"",
+  atomChecked:[],atomSourceId:null,
+  // api
+  anthropicKey:lsGet("atomica_ak",""),
+};
+
+let syncTimer=null;
+function schedSync(){if(!S.fbCfg)return;clearTimeout(syncTimer);syncTimer=setTimeout(async()=>{S.syncStatus="syncing";rHdr();try{await Promise.all(S.notes.map(n=>fbSave(S.fbCfg,n)));S.syncStatus="synced";}catch(e){S.syncStatus="error";}rHdr();},1200);}
+function persist(){lsSet("atomica_v5",S.notes);lsSet("atomica_bib",S.biblioteca);schedSync();}
+
+// ── SIDEBAR ───────────────────────────────────────────────
+function toggleSidebar(){const sb=document.getElementById("sidebar");const ov=document.getElementById("sidebar-overlay");if(sb){sb.classList.toggle("open");ov.style.display=sb.classList.contains("open")?"block":"none";}}
+function closeSidebar(){const sb=document.getElementById("sidebar");const ov=document.getElementById("sidebar-overlay");if(sb){sb.classList.remove("open");ov.style.display="none";}}
+
+// ── HEADER ────────────────────────────────────────────────
+function rHdr(){
+  const sm={synced:["#2a7a3a","⬤"],syncing:["#a07010","◌"],error:["#b03020","⚠"],offline:["#c0b090","○"]};
+  const [sc,sl]=sm[S.syncStatus]||sm.offline;
+  const isMobile=window.innerWidth<=680;
+  const inBib=["biblioteca","testo-edit","testo-detail","atomizza"].includes(S.screen);
+  document.getElementById("app-hdr").innerHTML=`
+    <div style="display:flex;align-items:baseline;gap:7px">
+      <span style="font-family:Georgia,serif;font-size:19px;font-weight:700;color:#8b6914;cursor:pointer" onclick="showSc('list')">Atomica</span>
+      <span style="font-size:7px;color:#c0b090;letter-spacing:2px;text-transform:uppercase">${inBib?"Biblioteca":"Note Glifate"}</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:7px">
+      <span style="font-size:10px;color:${sc}" title="${S.syncStatus}">${sl}</span>
+      <div class="hdr-search" style="position:relative">
+        <input id="hs" value="${esc(S.search)}" placeholder="Cerca…" style="background:#f5f2ed;border:1px solid #d0c8bc;border-radius:12px;padding:5px 11px 5px 26px;font-size:11px;width:150px">
+        <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:#b0a080;font-size:12px;pointer-events:none">⌕</span>
+      </div>
+      <div class="hdr-extra" style="display:flex;gap:6px">
+        <button onclick="showSc('biblioteca')" style="background:${inBib?"#8b6914":"#f0ece4"};border:1px solid ${inBib?"#8b6914":"#d8d0c4"};border-radius:5px;color:${inBib?"#fff":"#5a5040"};padding:5px 10px;font-size:11px">📚 Biblioteca</button>
+        <button onclick="showSc('export')" style="background:#f0ece4;border:1px solid #d8d0c4;border-radius:5px;color:#5a5040;padding:5px 10px;font-size:11px">↓ Export</button>
+        <button onclick="showSc('impostazioni')" style="background:${S.fbCfg?"#e8f4e8":(S.anthropicKey?"#f0f0fd":"#f0ece4")};border:1px solid ${S.fbCfg?"#90c890":(S.anthropicKey?"#b0a8d8":"#d8d0c4")};border-radius:5px;color:${S.fbCfg?"#2a6a2a":(S.anthropicKey?"#5040a0":"#5a5040")};padding:5px 10px;font-size:11px">⚙ Imp.</button>
+        <button onclick="quickNote()" style="background:#f5f0e0;border:1px solid #d8c890;border-radius:5px;color:#8b6914;padding:5px 10px;font-size:13px" title="Frammento rapido">⚡</button>
+        <button onclick="newNote()" style="background:#8b6914;border:none;border-radius:5px;color:#fff;padding:6px 14px;font-size:12px;font-family:Georgia,serif;font-weight:700">＋ Nota</button>
+      </div>
+      ${isMobile?`<button onclick="toggleSidebar()" style="background:none;border:none;color:#8b6914;font-size:20px;padding:4px 6px">☰</button>`:""}
+    </div>`;
+  document.getElementById("hs")?.addEventListener("input",e=>{S.search=e.target.value;if(S.screen==="list")rCnt();});
+}
+
+// ── GLYPH HELPERS ─────────────────────────────────────────
+function glyphBadge(g,sz=22){const gd=GM[g]||GLYPHS[0];return`<span style="display:inline-flex;align-items:center;justify-content:center;width:${sz+8}px;height:${sz+8}px;background:${gd.c}15;border-radius:${Math.floor(sz/3)}px;font-size:${sz}px;color:${gd.c}">${g}</span>`;}
+function glyphPickerHtml(sel){return`<div style="display:flex;gap:8px">${GLYPHS.map(g=>`<button class="glyph-btn" onclick="setEG('${g.s}')" style="background:${sel===g.s?g.c+"18":"#f9f7f4"};border:2px solid ${sel===g.s?g.c+"70":"#e0d8ce"}"><span style="font-size:20px;color:${g.c}">${g.s}</span><span style="font-size:9px;color:${sel===g.s?g.c:"#9a8a6a"};font-weight:600">${g.l}</span></button>`).join("")}</div>`;}
+
+// ── SIDEBAR HTML ──────────────────────────────────────────
+function sidebarHtml(){
+  const allTags=[...new Set(S.notes.flatMap(n=>n.tags))].sort();
+  const gc={};S.notes.forEach(n=>{gc[n.glyph]=(gc[n.glyph]||0)+1;});
+  const glyphFilters=GLYPHS.map(g=>{
+    const c2=gc[g.s]||0;const act=S.fGlyph===g.s;
+    return`<button onclick="setGlyph('${g.s}');closeSidebar()" style="display:flex;align-items:center;gap:8px;background:${act?g.c+"15":"transparent"};border:1px solid ${act?g.c+"50":"transparent"};border-radius:6px;padding:7px 8px;width:100%;margin-bottom:3px">
+      <span style="font-size:18px;color:${g.c}">${g.s}</span>
+      <div style="flex:1;text-align:left"><div style="font-family:Georgia,serif;font-size:13px;color:${act?g.c:"#2a2010"}">${g.l}</div><div style="font-size:9px;color:#b0a080">${g.desc}</div></div>
+      <span style="font-size:9px;color:#b0a080;background:#f0ece4;border-radius:6px;padding:1px 6px">${c2}</span>
+    </button>`;
+  }).join("")+(S.fGlyph?`<button onclick="setGlyph(null);closeSidebar()" style="background:none;border:none;color:#a09070;font-size:10px;padding:2px 7px;margin-bottom:8px">✕ rimuovi filtro</button>`:"");
+  const tItems=allTags.map(t=>`<button onclick="setTag('${t}');closeSidebar()" style="background:${S.fTag===t?"#8b6914":"#ede9e3"};border:1px solid ${S.fTag===t?"#8b6914":"#d8d0c4"};border-radius:8px;padding:4px 9px;color:${S.fTag===t?"#fff":"#5a5040"};font-size:11px;margin:2px">#${t}</button>`).join("");
+  const soItems=[["created","Data"],["alpha","A→Z"],["glyph","Categoria"]].map(([k,l])=>`<button onclick="setSort('${k}')" style="display:block;width:100%;text-align:left;background:${S.sort===k?"#f5f0e8":"transparent"};border:1px solid ${S.sort===k?"#d8c890":"transparent"};border-radius:4px;padding:6px 8px;color:${S.sort===k?"#8b6914":"#6a6050"};font-size:12px;margin-bottom:3px;font-weight:${S.sort===k?"600":"400"}">${S.sort===k?"▸ ":"  "}${l}</button>`).join("");
+  return`<div id="sidebar" style="background:#fff;border-right:1px solid #e0d8ce;width:240px;flex-shrink:0;overflow-y:auto;padding:16px 12px">
+    <div style="margin-bottom:18px">
+      <button onclick="showSc('biblioteca');closeSidebar()" style="display:flex;align-items:center;gap:8px;background:#fdf8f0;border:1px solid #e8d8b0;border-radius:8px;padding:10px 12px;width:100%;color:#8b6914">
+        <span style="font-size:18px">📚</span>
+        <div style="text-align:left"><div style="font-family:Georgia,serif;font-size:13px;font-weight:700">Biblioteca</div><div style="font-size:9px;color:#b0a080">${S.biblioteca.length} testi archiviati</div></div>
+      </button>
+    </div>
+    <div style="margin-bottom:20px"><div class="sec-lbl">Categoria</div>${glyphFilters}</div>
+    <div style="margin-bottom:20px"><div class="sec-lbl">Ordina per</div>${soItems}</div>
+    ${allTags.length?`<div><div class="sec-lbl">Tag (${allTags.length})</div><div>${tItems}</div>${S.fTag?`<button onclick="setTag(null);closeSidebar()" style="background:none;border:none;color:#a09070;font-size:10px;padding:2px 7px;margin-top:4px">✕ rimuovi filtro</button>`:""}</div>`:""}
+  </div>`;
+}
+
+// ── ROUTER ────────────────────────────────────────────────
+function rCnt(){
+  const s=S.screen;
+  if(s==="list")rList();
+  else if(s==="detail")rDetail();
+  else if(s==="edit")rEdit();
+  else if(s==="export")rExport();
+  else if(s==="impostazioni")rImpostazioni();
+  else if(s==="biblioteca")rBiblioteca();
+  else if(s==="testo-edit")rTestoEdit();
+  else if(s==="testo-detail")rTestoDetail();
+  else if(s==="atomizza")rAtomizza();
+}
+
+// ── SCREEN: LIST ──────────────────────────────────────────
+function rList(){
+  let ns=[...S.notes];
+  if(S.fGlyph)ns=ns.filter(n=>n.glyph===S.fGlyph);
+  if(S.fTag)ns=ns.filter(n=>n.tags.includes(S.fTag));
+  if(S.search){const q=S.search.toLowerCase();ns=ns.filter(n=>(n.body||"").toLowerCase().includes(q)||(n.title||"").toLowerCase().includes(q)||n.tags.some(t=>t.includes(q)));}
+  if(S.sort==="alpha")ns.sort((a,b)=>label(a).localeCompare(label(b),"it"));
+  else if(S.sort==="glyph")ns.sort((a,b)=>a.glyph.localeCompare(b.glyph));
+  else ns.sort((a,b)=>b.created-a.created);
+  const pinned=ns.filter(n=>n.pinned);const rest=ns.filter(n=>!n.pinned);
+  const card=n=>{const g=GM[n.glyph]||GLYPHS[0];const isF=!hasTitolo(n);return`<div class="ncard" onclick="viewNote('${n.id}')">
+    ${n.pinned?`<span style="position:absolute;top:10px;right:10px;color:#8b6914;font-size:10px">◆</span>`:""}
+    <div style="display:flex;align-items:flex-start;gap:10px">
+      ${glyphBadge(n.glyph)}
+      <div style="flex:1;min-width:0">
+        ${hasTitolo(n)?`<div style="font-family:Georgia,serif;font-size:14px;font-weight:700;color:#1a1410;margin-bottom:4px;line-height:1.3">${esc(n.title)}</div>`:""}
+        <p style="font-size:${isF?"14px":"12px"};color:${isF?"#3a3028":"#6a5a48"};line-height:1.6;font-style:${isF?"italic":"normal"};font-family:${isF?"Georgia,serif":"inherit"};overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${esc(n.body)}</p>
+        ${n.tags.length?`<div style="margin-top:8px">${n.tags.map(t=>`<span class="pill">#${t}</span>`).join("")}</div>`:""}
+        <div style="font-size:9px;color:#c0b090;margin-top:6px">${fmtD(n.created)}</div>
+      </div>
+    </div>
+  </div>`;};
+  const isGrid=S.layout==="grid";
+  const gridStyle=isGrid?"grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px":"grid-template-columns:1fr;gap:8px";
+  const hasF=S.fGlyph||S.fTag||S.search;
+  document.getElementById("cnt").innerHTML=`<div style="display:flex;height:100%">
+    ${sidebarHtml()}
+    <div id="cnt-main" style="flex:1;overflow-y:auto;padding:18px 16px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+        ${hasF?`<div style="display:flex;align-items:center;gap:8px;flex:1;padding:8px 12px;background:#fdf8f0;border:1px solid #e8d8b0;border-radius:8px">
+          <span style="font-size:11px;color:#8b6914;flex:1">${ns.length} risultat${ns.length===1?"o":"i"}</span>
+          <button onclick="clrF()" style="background:none;border:none;color:#a09070;font-size:11px">✕ Rimuovi filtri</button>
+        </div>`:`<span style="flex:1"></span>`}
+        <button onclick="S.layout=S.layout==='vertical'?'grid':'vertical';lsSet('atomica_layout',S.layout);rCnt()" title="${isGrid?"Vista verticale":"Vista griglia"}" style="background:${isGrid?"#fdf8f0":"#fff"};border:1px solid ${isGrid?"#e8d8b0":"#d8d0c4"};border-radius:7px;color:${isGrid?"#8b6914":"#9a8a7a"};padding:6px 10px;font-size:15px;line-height:1">${isGrid?"▦":"▤"}</button>
+      </div>
+      ${pinned.length?`<div style="margin-bottom:16px"><div class="sec-lbl" style="margin-bottom:8px">◆ Fisse</div><div style="display:grid;${gridStyle}">${pinned.map(card).join("")}</div></div>`:""}
+      ${rest.length?`<div style="display:grid;${gridStyle}">${rest.map(card).join("")}</div>`:ns.length===0?`<div style="text-align:center;padding:60px 20px;color:#b0a080"><div style="font-size:36px;margin-bottom:12px">∅</div><div style="font-family:Georgia,serif;font-size:16px;margin-bottom:6px">Nessuna nota trovata</div><div style="font-size:12px">Prova ad ampliare i filtri</div></div>`:""}
+    </div>
+  </div>`;
+}
+
+// ── SCREEN: DETAIL ────────────────────────────────────────
+function rDetail(){
+  const n=S.activeNote;if(!n){showSc("list");return;}
+  const g=GM[n.glyph]||GLYPHS[0];const isF=!hasTitolo(n);
+  const th=(n.tags||[]).map(t=>`<span class="pill" style="padding:4px 10px;font-size:11px">${t}</span>`).join("");
+  const f=n.fonte||{};
+  const fonteHtml=f.tipo?`<div style="margin-top:24px;padding-top:18px;border-top:1px solid #e8e0d4">
+    <div class="sec-lbl" style="margin-bottom:10px">Fonte</div>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:12px">
+      ${f.tipo?`<span style="color:#b0a080">Tipo</span><span style="color:#2a2418;text-transform:capitalize">${esc(f.tipo)}</span>`:""}
+      ${f.autori?`<span style="color:#b0a080">Autori</span><span style="color:#2a2418">${esc(f.autori)}</span>`:""}
+      ${f.opera?`<span style="color:#b0a080">Opera</span><span style="color:#2a2418;font-style:italic">${esc(f.opera)}</span>`:""}
+      ${f.riferimento?`<span style="color:#b0a080">Rif.</span><span style="color:#2a2418">${esc(f.riferimento)}</span>`:""}
+      ${f.pagina?`<span style="color:#b0a080">Pagina</span><span style="color:#2a2418">${esc(f.pagina)}</span>`:""}
+    </div>
+  </div>`:"";
+  document.getElementById("cnt").innerHTML=`<div style="flex:1;max-width:700px;margin:0 auto;padding:18px 16px 100px;overflow-y:auto;width:100%">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px">
+      <button onclick="showSc('list')" style="background:#fff;border:1px solid #d8d0c4;border-radius:6px;color:#5a5040;font-size:13px;padding:6px 12px">← Lista</button>
+      ${glyphBadge(n.glyph,28)}
+      <span style="font-size:8px;color:${g.c};letter-spacing:2px;text-transform:uppercase;flex:1;font-weight:600">${g.l}</span>
+      <button onclick="pinN('${n.id}');S.activeNote=S.notes.find(x=>x.id==='${n.id}');rCnt()" style="background:${n.pinned?"#fdf5e0":"#fff"};border:1px solid ${n.pinned?"#d8b840":"#d8d0c4"};border-radius:5px;color:${n.pinned?"#8b6914":"#909080"};padding:6px 10px;font-size:11px">${n.pinned?"◆":"◇"}</button>
+      <button onclick="editN('${n.id}')" style="background:#8b6914;border:none;border-radius:5px;color:#fff;padding:6px 13px;font-size:12px;font-family:Georgia,serif;font-weight:700">Modifica</button>
+      <button onclick="delN('${n.id}');showSc('list')" style="background:#fff;border:1px solid #e8c8c8;border-radius:5px;color:#b04030;padding:6px 10px;font-size:12px">✕</button>
+    </div>
+    <div style="background:#fff;border:1px solid #e0d8ce;border-radius:12px;padding:24px;box-shadow:0 2px 10px #00000006">
+      ${n.pinned?`<div style="font-size:8px;color:#8b6914;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;font-weight:600">◆ Nota fissa</div>`:""}
+      ${hasTitolo(n)?`<h1 style="font-family:Georgia,serif;font-size:22px;font-weight:700;color:#1a1410;line-height:1.25;margin-bottom:8px">${esc(n.title)}</h1>`:""}
+      <div style="font-size:9px;color:#b0a080;margin-bottom:18px">${fmtD(n.created)}</div>
+      <div style="width:28px;height:2px;background:${g.c}50;margin-bottom:18px;border-radius:2px"></div>
+      <p style="font-family:Georgia,serif;font-size:${isF?"18px":"16px"};color:#2a2418;line-height:1.9;white-space:pre-wrap;font-style:${isF?"italic":"normal"}">${esc(n.body)}</p>
+      ${th?`<div style="margin-top:20px;padding-top:14px;border-top:1px solid #ede8e0"><div class="sec-lbl" style="margin-bottom:8px">Tag</div>${th}</div>`:""}
+      ${fonteHtml}
+    </div>
+  </div>`;
+}
+
+// ── SCREEN: EDIT ──────────────────────────────────────────
+function rEdit(){
+  const n=S.editNote||{glyph:"☿",title:"",body:"",tags:[],pinned:false,fonte:{tipo:"",autori:"",opera:"",riferimento:"",pagina:""}};
+  const isNew=!n.id;const isQuick=S.quickMode;const f=n.fonte||{};
+  const ti=(n.tags||[]).map(t=>`<span style="background:#f0ece4;border:1px solid #d8d0c4;border-radius:8px;padding:3px 9px;font-size:11px;color:#5a5040;margin:2px;display:inline-flex;align-items:center;gap:4px">${esc(t)}<button onclick="remET('${t}')" style="background:none;border:none;color:#b09070;font-size:13px;cursor:pointer;padding:0;line-height:1">×</button></span>`).join("");
+  const tipoOpts=TIPI_FONTE.map(t=>`<option value="${t}" ${f.tipo===t?"selected":""}>${t||"— seleziona tipo —"}</option>`).join("");
+  document.getElementById("cnt").innerHTML=`<div style="flex:1;max-width:600px;margin:0 auto;padding:18px 16px 120px;overflow-y:auto;width:100%">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:18px">
+      <button onclick="showSc(${isNew?"'list'":"'detail'"})" style="background:#fff;border:1px solid #d8d0c4;border-radius:6px;color:#5a5040;font-size:13px;padding:6px 12px">← Indietro</button>
+      <span style="font-size:9px;color:#a09080;letter-spacing:2px;text-transform:uppercase;font-weight:600">${isQuick?"⚡ Rapido":isNew?"Nuova nota":"Modifica"}</span>
+    </div>
+    <div style="background:#fff;border:1px solid #e0d8ce;border-radius:12px;padding:20px;box-shadow:0 2px 8px #00000005">
+      <div class="fld"><div class="sec-lbl">Categoria</div>${glyphPickerHtml(n.glyph)}</div>
+      <div class="fld">
+        <div class="sec-lbl">Frammento <span style="color:#c0b090;font-weight:400;text-transform:none;letter-spacing:0">(obbligatorio)</span></div>
+        <textarea id="eb" rows="4" placeholder="La citazione, il pensiero, l'azione, il dubbio…" style="resize:vertical;line-height:1.75;font-family:Georgia,serif;font-size:15px">${esc(n.body)}</textarea>
+      </div>
+      ${!isQuick?`<div class="fld"><div class="sec-lbl">Titolo <span style="color:#c0b090;font-weight:400;text-transform:none;letter-spacing:0">(facoltativo)</span></div><input id="et" value="${esc(n.title)}" placeholder="Solo se il frammento non si identifica da solo…"></div>`:""}
+      <div class="fld">
+        <div class="sec-lbl">Tag</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <input id="etag" placeholder="Aggiungi tag + Invio" onkeydown="if(event.key==='Enter'){event.preventDefault();addET()}">
+          <button onclick="addET()" style="background:#8b6914;border:none;border-radius:6px;color:#fff;padding:10px 14px;font-size:14px;flex-shrink:0">＋</button>
+        </div>
+        <div id="etd">${ti}</div>
+      </div>
+      ${!isQuick?`<div style="border-top:1px solid #ede8e0;padding-top:16px;margin-top:6px">
+        <div class="sec-lbl" style="margin-bottom:12px">Fonte</div>
+        <div class="fld"><div class="sec-lbl">Tipo</div><select id="ftp">${tipoOpts}</select></div>
+        <div class="row2">
+          <div class="fld"><div class="sec-lbl">Autori</div><input id="fau" value="${esc(f.autori)}" placeholder="es. Enzo Ferrari"></div>
+          <div class="fld"><div class="sec-lbl">Opera / Testata</div><input id="fop" value="${esc(f.opera)}" placeholder="es. Libero"></div>
+        </div>
+        <div class="row2">
+          <div class="fld"><div class="sec-lbl">Riferimento</div><input id="fri" value="${esc(f.riferimento)}" placeholder="es. 16/03/2026"></div>
+          <div class="fld"><div class="sec-lbl">Pagina</div><input id="fpg" value="${esc(f.pagina)}" placeholder="es. 21"></div>
+        </div>
+      </div>`:""}
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+        <input type="checkbox" id="ep" ${n.pinned?"checked":""} style="accent-color:#8b6914;width:16px;height:16px">
+        <label for="ep" style="color:#5a5040;font-size:12px;cursor:pointer">Fissa in cima ◆</label>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button onclick="showSc(${isNew?"'list'":"'detail'"})" style="background:#fff;border:1px solid #d8d0c4;border-radius:6px;color:#6a6050;padding:10px 18px;font-size:13px">Annulla</button>
+      <button onclick="saveN()" style="background:#8b6914;border:none;border-radius:6px;color:#fff;padding:10px 22px;font-size:13px;font-family:Georgia,serif;font-weight:700">${isQuick?"⚡ Salva":"Salva nota"}</button>
+    </div>
+  </div>`;
+  setTimeout(()=>document.getElementById("eb")?.focus(),80);
+}
+
+// ── SCREEN: EXPORT ────────────────────────────────────────
+function rExport(){
+  const ns=S.expScope==="pinned"?S.notes.filter(n=>n.pinned):S.notes;
+  const prev=S.expFmt==="json"?JSON.stringify(ns,null,2):toMarkdown(ns);
+  document.getElementById("cnt").innerHTML=`<div style="flex:1;max-width:620px;margin:0 auto;padding:18px 16px 100px;overflow-y:auto;width:100%">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:18px">
+      <button onclick="showSc('list')" style="background:#fff;border:1px solid #d8d0c4;border-radius:6px;color:#5a5040;font-size:13px;padding:6px 12px">← Lista</button>
+      <span style="font-size:9px;color:#a09080;letter-spacing:2px;text-transform:uppercase;font-weight:600">Esporta</span>
+    </div>
+    <div style="background:#fff;border:1px solid #e0d8ce;border-radius:12px;padding:20px">
+      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+        <div><div class="sec-lbl">Formato</div><div style="display:flex;gap:6px">${[["json","JSON"],["md","Markdown"]].map(([k,l])=>`<button onclick="S.expFmt='${k}';rCnt()" style="background:${S.expFmt===k?"#8b6914":"#f5f2ed"};border:1px solid ${S.expFmt===k?"#8b6914":"#d8d0c4"};border-radius:5px;color:${S.expFmt===k?"#fff":"#5a5040"};padding:7px 14px;font-size:12px">${l}</button>`).join("")}</div></div>
+        <div><div class="sec-lbl">Selezione</div><div style="display:flex;gap:6px">${[["all","Tutte ("+S.notes.length+")"],["pinned","Fisse ("+S.notes.filter(n=>n.pinned).length+")"]].map(([k,l])=>`<button onclick="S.expScope='${k}';rCnt()" style="background:${S.expScope===k?"#8b6914":"#f5f2ed"};border:1px solid ${S.expScope===k?"#8b6914":"#d8d0c4"};border-radius:5px;color:${S.expScope===k?"#fff":"#5a5040"};padding:7px 14px;font-size:12px">${l}</button>`).join("")}</div></div>
+      </div>
+      <div style="background:#f5f2ed;border:1px solid #e0d8ce;border-radius:6px;padding:12px;font-size:10px;color:#5a5040;line-height:1.7;white-space:pre-wrap;max-height:220px;overflow-y:auto;font-family:'Courier New',monospace">${esc(prev.slice(0,2000))}${prev.length>2000?"\n…":""}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
+        <span style="font-size:10px;color:#b0a080">${ns.length} note</span>
+        <button onclick="doExp()" style="background:#8b6914;border:none;border-radius:6px;color:#fff;padding:10px 20px;font-size:13px;font-family:Georgia,serif;font-weight:700">↓ Scarica ${S.expFmt.toUpperCase()}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── SCREEN: IMPOSTAZIONI (Firebase + Anthropic) ───────────
+function rImpostazioni(){
+  const cfg=S.fbCfg||{projectId:"",apiKey:""};
+  document.getElementById("cnt").innerHTML=`<div style="flex:1;max-width:520px;margin:0 auto;padding:18px 16px 100px;overflow-y:auto;width:100%">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:18px">
+      <button onclick="showSc('list')" style="background:#fff;border:1px solid #d8d0c4;border-radius:6px;color:#5a5040;font-size:13px;padding:6px 12px">← Lista</button>
+      <span style="font-size:9px;color:#a09080;letter-spacing:2px;text-transform:uppercase;font-weight:600">Impostazioni</span>
+    </div>
+
+    <!-- Firebase -->
+    <div style="background:#fff;border:1px solid #e0d8ce;border-radius:12px;padding:20px;margin-bottom:14px">
+      <div style="font-family:Georgia,serif;font-size:15px;font-weight:700;color:#1a1410;margin-bottom:4px">☁ Firebase Sync</div>
+      <div style="font-size:11px;color:#9a8a6a;margin-bottom:14px">Sincronizzazione note in cloud</div>
+      <div class="fld"><div class="sec-lbl">Project ID</div><input id="fpid" value="${esc(cfg.projectId)}" placeholder="es. atomic-notes-81d5b"></div>
+      <div class="fld"><div class="sec-lbl">API Key</div><input id="fkey" type="password" value="${esc(cfg.apiKey)}" placeholder="AIzaSy…"></div>
+      ${S.fbCfg?`<button onclick="discFb()" style="background:#fdf0f0;border:1px solid #e8c0c0;border-radius:6px;color:#b04030;padding:8px 14px;font-size:12px;margin-bottom:14px;display:block">Scollega Firebase</button>`:""}
+      <div id="fberr" style="color:#b04030;font-size:12px;margin-bottom:10px;display:none;background:#fdf0f0;padding:8px 12px;border-radius:6px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="connFb()" style="background:#8b6914;border:none;border-radius:6px;color:#fff;padding:10px 22px;font-size:13px;font-family:Georgia,serif;font-weight:700">Connetti</button>
+      </div>
+    </div>
+
+    <!-- Anthropic -->
+    <div style="background:#fff;border:1px solid #d8d0e8;border-radius:12px;padding:20px">
+      <div style="font-family:Georgia,serif;font-size:15px;font-weight:700;color:#1a1410;margin-bottom:4px">⚗️ Atomizzatore AI</div>
+      <div style="font-size:11px;color:#9a8a6a;margin-bottom:4px">API key Anthropic per l'atomizzazione automatica dei testi in Biblioteca</div>
+      <div style="font-size:10px;color:#b0a0c0;margin-bottom:14px">Ottieni la tua key su console.anthropic.com → API Keys</div>
+      <div class="fld"><div class="sec-lbl">Anthropic API Key</div><input id="akkey" type="password" value="${esc(S.anthropicKey)}" placeholder="sk-ant-api03-…"></div>
+      ${S.anthropicKey?`<div style="font-size:11px;color:#2a6a2a;background:#e8f4e8;border:1px solid #90c890;border-radius:6px;padding:8px 12px;margin-bottom:12px">✓ API key configurata</div>`:""}
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        ${S.anthropicKey?`<button onclick="S.anthropicKey='';lsSet('atomica_ak','');rCnt()" style="background:#fdf0f0;border:1px solid #e8c0c0;border-radius:6px;color:#b04030;padding:10px 14px;font-size:12px">Rimuovi</button>`:""}
+        <button onclick="saveAK()" style="background:#5040a0;border:none;border-radius:6px;color:#fff;padding:10px 22px;font-size:13px;font-family:Georgia,serif;font-weight:700">Salva key</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── SCREEN: BIBLIOTECA ────────────────────────────────────
+function rBiblioteca(){
+  const testi=S.biblioteca;
+  const autori=[...new Set(testi.map(t=>t.autore).filter(Boolean))].sort();
+  let filtrati=S.bibAutore?testi.filter(t=>t.autore===S.bibAutore):testi;
+  if(S.bibSearch){const q=S.bibSearch.toLowerCase();filtrati=filtrati.filter(t=>(t.autore||"").toLowerCase().includes(q)||(t.titolo||"").toLowerCase().includes(q)||(t.opera||"").toLowerCase().includes(q)||(t.testata||"").toLowerCase().includes(q));}
+  
+  const byAutore={};
+  filtrati.forEach(t=>{const a=t.autore||"— Autore sconosciuto";if(!byAutore[a])byAutore[a]=[];byAutore[a].push(t);});
+  const sortedA=Object.keys(byAutore).sort();
+  
+  const tcrd=t=>`<div class="tcard" onclick="viewTesto('${t.id}')">
+    <div style="display:flex;align-items:flex-start;gap:10px">
+      <span style="font-size:24px;line-height:1;flex-shrink:0">${t.tipo==="articolo"?"📰":"📖"}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-family:Georgia,serif;font-size:14px;font-weight:700;color:#1a1410;margin-bottom:3px;line-height:1.3">${esc(t.titolo||"Senza titolo")}</div>
+        <div style="font-size:11px;color:#9a8070;margin-bottom:6px">${esc(t.tipo==="articolo"?t.testata:t.opera)||""}${t.riferimento?" · "+esc(t.riferimento):""}</div>
+        <div style="font-size:10px;color:#b0a090;line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${esc((t.testo||"").slice(0,140))}…</div>
+      </div>
+    </div>
+  </div>`;
+  
+  const gruppi=sortedA.map(a=>`<div style="margin-bottom:24px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div style="font-family:Georgia,serif;font-size:15px;font-weight:700;color:#2a2010">${esc(a)}</div>
+      <div style="flex:1;height:1px;background:#e0d8ce"></div>
+      <span style="font-size:9px;color:#b0a080">${byAutore[a].length} test${byAutore[a].length===1?"o":"i"}</span>
+    </div>
+    <div style="display:grid;gap:8px">${byAutore[a].map(tcrd).join("")}</div>
+  </div>`).join("");
+  
+  document.getElementById("cnt").innerHTML=`<div style="display:flex;height:100%;overflow:hidden">
+    <!-- sidebar autori -->
+    <div style="width:190px;flex-shrink:0;background:#fff;border-right:1px solid #e0d8ce;padding:14px 10px;overflow-y:auto">
+      <div class="sec-lbl">Autori</div>
+      <button onclick="S.bibAutore=null;rCnt()" style="display:block;width:100%;text-align:left;background:${!S.bibAutore?"#fdf8f0":"transparent"};border:1px solid ${!S.bibAutore?"#e8d8b0":"transparent"};border-radius:6px;padding:7px 8px;color:${!S.bibAutore?"#8b6914":"#5a5040"};font-size:12px;margin-bottom:3px;font-weight:${!S.bibAutore?"700":"400"}">Tutti <span style="color:#c0b090">(${testi.length})</span></button>
+      ${autori.map(a=>`<button onclick="S.bibAutore=${JSON.stringify(a)};rCnt()" style="display:block;width:100%;text-align:left;background:${S.bibAutore===a?"#fdf8f0":"transparent"};border:1px solid ${S.bibAutore===a?"#e8d8b0":"transparent"};border-radius:6px;padding:7px 8px;color:${S.bibAutore===a?"#8b6914":"#5a5040"};font-size:11px;margin-bottom:2px;font-weight:${S.bibAutore===a?"700":"400"};overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(a)}">${esc(a)} <span style="color:#c0b090">(${testi.filter(t=>t.autore===a).length})</span></button>`).join("")}
+    </div>
+    <!-- main -->
+    <div style="flex:1;overflow-y:auto;padding:18px 16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
+        <button onclick="showSc('list')" style="background:#fff;border:1px solid #d8d0c4;border-radius:6px;color:#5a5040;font-size:13px;padding:6px 12px">← Note</button>
+        <span style="font-size:9px;color:#a09080;letter-spacing:2px;text-transform:uppercase;font-weight:600;flex:1">Biblioteca · ${filtrati.length} test${filtrati.length===1?"o":"i"}</span>
+        <div style="position:relative">
+          <input value="${esc(S.bibSearch)}" oninput="S.bibSearch=this.value;rCnt()" placeholder="Cerca…" style="background:#f5f2ed;border:1px solid #d0c8bc;border-radius:12px;padding:5px 11px 5px 26px;font-size:11px;width:130px">
+          <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:#b0a080;font-size:12px;pointer-events:none">⌕</span>
+        </div>
+        <button onclick="newTesto()" style="background:#8b6914;border:none;border-radius:6px;color:#fff;padding:7px 16px;font-size:12px;font-family:Georgia,serif;font-weight:700">＋ Testo</button>
+      </div>
+      ${filtrati.length===0?`<div style="text-align:center;padding:60px 20px;color:#b0a080">
+        <div style="font-size:40px;margin-bottom:12px">📚</div>
+        <div style="font-family:Georgia,serif;font-size:17px;margin-bottom:8px">Biblioteca vuota</div>
+        <div style="font-size:12px;margin-bottom:22px">Aggiungi articoli e brani che vuoi conservare e atomizzare</div>
+        <button onclick="newTesto()" style="background:#8b6914;border:none;border-radius:8px;color:#fff;padding:11px 26px;font-size:13px;font-family:Georgia,serif;font-weight:700">＋ Aggiungi primo testo</button>
+      </div>`:gruppi}
+    </div>
+  </div>`;
+}
+
+// ── SCREEN: TESTO EDIT ────────────────────────────────────
+function switchTipoTesto(tipo){
+  // salva i valori del form prima di ri-renderizzare
+  S.editTesto={
+    ...S.editTesto,tipo,
+    autore:document.getElementById("tau")?.value?.trim()||S.editTesto?.autore||"",
+    titolo:document.getElementById("tti")?.value?.trim()||S.editTesto?.titolo||"",
+    testata:document.getElementById("tte")?.value?.trim()||S.editTesto?.testata||"",
+    riferimento:document.getElementById("tri")?.value?.trim()||S.editTesto?.riferimento||"",
+    opera:document.getElementById("top")?.value?.trim()||S.editTesto?.opera||"",
+    pagina:document.getElementById("tpg")?.value?.trim()||S.editTesto?.pagina||"",
+    testo:document.getElementById("tbo")?.value||S.editTesto?.testo||"",
+  };
+  rTestoEdit();
+}
+
+function rTestoEdit(){
+  const t=S.editTesto||{tipo:"articolo",autore:"",titolo:"",testata:"",opera:"",riferimento:"",pagina:"",testo:""};
+  const isNew=!t.id;
+  document.getElementById("cnt").innerHTML=`<div style="flex:1;max-width:680px;margin:0 auto;padding:18px 16px 120px;overflow-y:auto;width:100%">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:18px">
+      <button onclick="showSc('biblioteca')" style="background:#fff;border:1px solid #d8d0c4;border-radius:6px;color:#5a5040;font-size:13px;padding:6px 12px">← Biblioteca</button>
+      <span style="font-size:9px;color:#a09080;letter-spacing:2px;text-transform:uppercase;font-weight:600">${isNew?"Nuovo testo":"Modifica testo"}</span>
+    </div>
+    <div style="background:#fff;border:1px solid #e0d8ce;border-radius:12px;padding:20px;box-shadow:0 2px 8px #00000005">
+      <div class="fld">
+        <div class="sec-lbl">Tipo</div>
+        <div style="display:flex;gap:8px">
+          ${[["articolo","📰 Articolo / Rivista"],["brano","📖 Brano di libro"]].map(([k,l])=>`<button onclick="switchTipoTesto('${k}')" style="flex:1;background:${t.tipo===k?"#fdf8f0":"#f5f2ed"};border:2px solid ${t.tipo===k?"#8b6914":"#d8d0c4"};border-radius:8px;color:${t.tipo===k?"#8b6914":"#6a5a40"};padding:10px;font-size:13px;font-weight:${t.tipo===k?"700":"400"}">${l}</button>`).join("")}
+        </div>
+      </div>
+      <div class="row2">
+        <div class="fld"><div class="sec-lbl">Autore</div><input id="tau" value="${esc(t.autore)}" placeholder="es. Massimo Montanari"></div>
+        <div class="fld"><div class="sec-lbl">Titolo</div><input id="tti" value="${esc(t.titolo)}" placeholder="es. Il cibo come cultura"></div>
+      </div>
+      ${t.tipo==="articolo"?`<div class="row2">
+        <div class="fld"><div class="sec-lbl">Testata</div><input id="tte" value="${esc(t.testata)}" placeholder="es. Gambero Rosso"></div>
+        <div class="fld"><div class="sec-lbl">Data</div><input id="tri" value="${esc(t.riferimento)}" placeholder="es. 16/03/2026"></div>
+      </div>`:`<div class="row2">
+        <div class="fld"><div class="sec-lbl">Opera</div><input id="top" value="${esc(t.opera)}" placeholder="es. La cucina italiana"></div>
+        <div class="fld"><div class="sec-lbl">Pagine</div><input id="tpg" value="${esc(t.pagina)}" placeholder="es. 112–118"></div>
+      </div>`}
+      <div class="fld">
+        <div class="sec-lbl">Testo <span style="color:#c0b090;font-weight:400;text-transform:none;letter-spacing:0">(incolla il contenuto integrale)</span></div>
+        <textarea id="tbo" rows="13" placeholder="Incolla qui l'articolo o il brano…" style="resize:vertical;line-height:1.8;font-family:Georgia,serif;font-size:14px">${esc(t.testo)}</textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button onclick="showSc('biblioteca')" style="background:#fff;border:1px solid #d8d0c4;border-radius:6px;color:#6a6050;padding:10px 18px;font-size:13px">Annulla</button>
+      <button onclick="saveTesto()" style="background:#8b6914;border:none;border-radius:6px;color:#fff;padding:10px 22px;font-size:13px;font-family:Georgia,serif;font-weight:700">Salva testo</button>
+    </div>
+  </div>`;
+  setTimeout(()=>document.getElementById("tau")?.focus(),80);
+}
+
+// ── SCREEN: TESTO DETAIL ──────────────────────────────────
+function rTestoDetail(){
+  const t=S.activeTesto;if(!t){showSc("biblioteca");return;}
+  const noteDaQ=S.notes.filter(n=>n.fonte?.autori===t.autore&&(n.fonte?.opera===(t.tipo==="articolo"?t.testata:t.opera)));
+  const hasKey=!!S.anthropicKey;
+  document.getElementById("cnt").innerHTML=`<div style="flex:1;max-width:720px;margin:0 auto;padding:18px 16px 100px;overflow-y:auto;width:100%">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+      <button onclick="showSc('biblioteca')" style="background:#fff;border:1px solid #d8d0c4;border-radius:6px;color:#5a5040;font-size:13px;padding:6px 12px">← Biblioteca</button>
+      <span style="font-size:9px;color:#a09080;letter-spacing:2px;text-transform:uppercase;font-weight:600;flex:1">${t.tipo==="articolo"?"📰 Articolo":"📖 Brano"}</span>
+      <button onclick="editTesto('${t.id}')" style="background:#fff;border:1px solid #d8d0c4;border-radius:5px;color:#5a5040;padding:6px 12px;font-size:12px">Modifica</button>
+      <button onclick="delTesto('${t.id}')" style="background:#fff;border:1px solid #e8c8c8;border-radius:5px;color:#b04030;padding:6px 10px;font-size:12px">✕</button>
+    </div>
+
+    <!-- header testo -->
+    <div style="background:#fff;border:1px solid #e0d8ce;border-radius:12px;padding:24px;margin-bottom:14px;box-shadow:0 2px 10px #00000006">
+      <h1 style="font-family:Georgia,serif;font-size:20px;font-weight:700;color:#1a1410;line-height:1.3;margin-bottom:8px">${esc(t.titolo||"Senza titolo")}</h1>
+      <div style="font-size:13px;color:#8b6914;font-weight:700;margin-bottom:3px">${esc(t.autore||"—")}</div>
+      <div style="font-size:11px;color:#a09080;margin-bottom:18px">${t.tipo==="articolo"?esc(t.testata)+(t.riferimento?" · "+esc(t.riferimento):""):esc(t.opera)+(t.pagina?" · p. "+esc(t.pagina):"")}</div>
+      <div style="border-top:1px solid #ede8e0;padding-top:18px">
+        <p style="font-family:Georgia,serif;font-size:14px;color:#3a3028;line-height:1.9;white-space:pre-wrap">${esc(t.testo)}</p>
+      </div>
+    </div>
+
+    <!-- atomizza CTA -->
+    <div style="background:linear-gradient(135deg,#fdf8f0 0%,#faf4e8 100%);border:2px solid #e8d8a8;border-radius:12px;padding:22px;margin-bottom:14px;text-align:center">
+      <div style="font-size:28px;margin-bottom:8px">⚗️</div>
+      <div style="font-family:Georgia,serif;font-size:17px;font-weight:700;color:#1a1410;margin-bottom:6px">Atomizza questo testo</div>
+      <div style="font-size:12px;color:#9a8a6a;margin-bottom:18px;line-height:1.7;max-width:440px;margin-left:auto;margin-right:auto">Claude analizza il testo e propone note glifate candidate.<br>Tu approvi, scarta, cambi glifo. Solo quelle confermate entrano in Atomica.</div>
+      ${!hasKey?`<div style="font-size:11px;color:#7040a0;background:#f5f0fd;border:1px solid #d0c0e8;border-radius:6px;padding:9px 14px;margin-bottom:14px;display:inline-block">⚠ Configura l'API key Anthropic in <button onclick="showSc('impostazioni')" style="background:none;border:none;color:#5040a0;font-size:11px;text-decoration:underline;cursor:pointer;font-family:inherit">Impostazioni</button> per usare l'atomizzatore</div>`:""}
+      <button onclick="startAtomizza('${t.id}')" ${!hasKey?"disabled":""} style="background:${hasKey?"#5040a0":"#c0b8d0"};border:none;border-radius:8px;color:#fff;padding:12px 30px;font-size:14px;font-family:Georgia,serif;font-weight:700;cursor:${hasKey?"pointer":"not-allowed"}">⚗️ Avvia atomizzazione</button>
+    </div>
+
+    <!-- note già estratte -->
+    ${noteDaQ.length?`<div style="background:#fff;border:1px solid #e0d8ce;border-radius:12px;padding:16px">
+      <div class="sec-lbl" style="margin-bottom:12px">Note già estratte da questo testo (${noteDaQ.length})</div>
+      ${noteDaQ.map(n=>`<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #f0ece4;cursor:pointer" onclick="viewNote('${n.id}')">
+        ${glyphBadge(n.glyph,18)}<span style="font-size:12px;color:#3a3028;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:Georgia,serif;font-style:${hasTitolo(n)?"normal":"italic"}">${esc(label(n))}</span>
+        <span style="font-size:10px;color:#c0b090">→</span>
+      </div>`).join("")}
+    </div>`:""}
+  </div>`;
+}
+
+// ── SCREEN: ATOMIZZA ──────────────────────────────────────
+function rAtomizza(){
+  const t=S.biblioteca.find(t=>t.id===S.atomSourceId);
+  if(!t){showSc("biblioteca");return;}
+
+  if(S.atomStatus==="loading"){
+    document.getElementById("cnt").innerHTML=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:40px">
+      <div style="font-size:48px;animation:spin 3s linear infinite;display:inline-block">⚗️</div>
+      <div style="font-family:Georgia,serif;font-size:19px;color:#1a1410">Atomizzazione in corso…</div>
+      <div style="font-size:12px;color:#a09080;text-align:center;max-width:320px;line-height:1.8">Claude sta leggendo il testo di <strong>${esc(t.autore||"questo autore")}</strong> e cercando i frammenti che meritano di essere conservati</div>
+      <div style="width:200px;height:3px;background:#e0d8ce;border-radius:2px;overflow:hidden"><div style="height:100%;background:#8b6914;border-radius:2px;animation:pulse 1.5s ease-in-out infinite"></div></div>
+    </div>`;
+    return;
+  }
+
+  if(S.atomStatus==="error"){
+    document.getElementById("cnt").innerHTML=`<div style="flex:1;max-width:600px;margin:0 auto;padding:40px 16px;text-align:center">
+      <div style="font-size:40px;margin-bottom:12px">⚠</div>
+      <div style="font-family:Georgia,serif;font-size:18px;color:#b04030;margin-bottom:12px">Errore atomizzazione</div>
+      <div style="font-size:12px;color:#9a8070;background:#fdf0f0;border:1px solid #e8c0c0;border-radius:8px;padding:14px;margin-bottom:22px;text-align:left">${esc(S.atomError)}</div>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button onclick="showSc('testo-detail')" style="background:#fff;border:1px solid #d8d0c4;border-radius:6px;color:#5a5040;padding:10px 18px;font-size:13px">← Torna al testo</button>
+        <button onclick="startAtomizza('${t.id}')" style="background:#8b6914;border:none;border-radius:6px;color:#fff;padding:10px 20px;font-size:13px;font-family:Georgia,serif;font-weight:700">↺ Riprova</button>
+      </div>
+    </div>`;
+    return;
+  }
+
+  const cands=S.atomCandidates;
+  const selN=S.atomChecked.length;
+
+  const candHtml=cands.map(c=>{
+    const chk=S.atomChecked.includes(c._id);
+    const g=GM[c.glyph]||GLYPHS[0];
+    return`<div class="cand-card ${chk?"sel":""}" id="cc_${c._id}">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <input type="checkbox" ${chk?"checked":""} onchange="toggleCand('${c._id}')" style="accent-color:#8b6914;width:16px;height:16px;margin-top:4px;flex-shrink:0">
+        ${glyphBadge(c.glyph,20)}
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+            <span style="font-size:10px;color:${g.c};font-weight:700;letter-spacing:1px;text-transform:uppercase">${g.l}</span>
+            <div style="display:flex;gap:2px;margin-left:4px">${GLYPHS.map(gg=>`<button onclick="changeCandGlyph('${c._id}','${gg.s}')" title="Cambia in ${gg.l}" style="background:${c.glyph===gg.s?"#f5f0e4":"transparent"};border:1px solid ${c.glyph===gg.s?"#d8c890":"transparent"};border-radius:4px;padding:2px 5px;font-size:14px;color:${gg.c};line-height:1">${gg.s}</button>`).join("")}</div>
+          </div>
+          ${c.title?`<div style="font-family:Georgia,serif;font-size:13px;font-weight:700;color:#1a1410;margin-bottom:5px">${esc(c.title)}</div>`:""}
+          <p style="font-family:Georgia,serif;font-size:13px;color:#3a3028;line-height:1.75;font-style:${!c.title&&c.glyph==="☿"?"italic":"normal"}">${esc(c.body)}</p>
+          ${c.tags?.length?`<div style="margin-top:8px">${c.tags.map(tg=>`<span class="pill">#${tg}</span>`).join("")}</div>`:""}
+          <div style="font-size:10px;color:#b0a080;margin-top:8px">${esc(c.fonte?.tipo||"")} · ${esc(c.fonte?.autori||"")} ${c.fonte?.opera?"· "+esc(c.fonte.opera):""}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+
+  document.getElementById("cnt").innerHTML=`<div style="flex:1;max-width:680px;margin:0 auto;padding:18px 16px 120px;overflow-y:auto;width:100%">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <button onclick="showSc('testo-detail')" style="background:#fff;border:1px solid #d8d0c4;border-radius:6px;color:#5a5040;font-size:13px;padding:6px 12px">← Testo</button>
+      <span style="font-size:9px;color:#a09080;letter-spacing:2px;text-transform:uppercase;font-weight:600;flex:1">⚗️ Proposta atomizzazione</span>
+      <button onclick="startAtomizza('${t.id}')" style="background:#fff;border:1px solid #d8c890;border-radius:5px;color:#8b6914;padding:6px 12px;font-size:11px">↺ Rigenera</button>
+    </div>
+
+    <div style="background:#fdf8f0;border:1px solid #e8d8b0;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#8b6914;line-height:1.7">
+      <strong style="font-family:Georgia,serif">«${esc(t.titolo||"Testo")}»</strong> — ${esc(t.autore||"Autore sconosciuto")}<br>
+      <span style="color:#a09070">Claude ha proposto ${cands.length} note candidate. Seleziona quelle da importare, modifica il glifo se necessario.</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <button onclick="selectAllCands()" style="background:none;border:none;color:#8b6914;font-size:11px;text-decoration:underline;padding:0;cursor:pointer">Seleziona tutto</button>
+      <span style="color:#d8d0c4;font-size:12px">|</span>
+      <button onclick="deselectAllCands()" style="background:none;border:none;color:#a09070;font-size:11px;text-decoration:underline;padding:0;cursor:pointer">Deseleziona tutto</button>
+      <span style="flex:1"></span>
+      <span style="font-size:11px;color:#6a5a40;font-weight:600">${selN} / ${cands.length} selezionate</span>
+    </div>
+
+    ${candHtml}
+
+    <div style="position:sticky;bottom:0;background:#f5f2ed;padding:14px 0;border-top:1px solid #e0d8ce;margin-top:8px">
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button onclick="showSc('testo-detail')" style="background:#fff;border:1px solid #d8d0c4;border-radius:6px;color:#6a6050;padding:10px 18px;font-size:13px">Annulla</button>
+        <button onclick="importCands()" ${selN===0?"disabled":""} style="background:${selN>0?"#8b6914":"#c0b090"};border:none;border-radius:6px;color:#fff;padding:10px 22px;font-size:13px;font-family:Georgia,serif;font-weight:700;cursor:${selN>0?"pointer":"not-allowed"}">＋ Importa ${selN} not${selN===1?"a":"e"}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── AZIONI BIBLIOTECA ─────────────────────────────────────
+function newTesto(){S.editTesto={tipo:"articolo",autore:"",titolo:"",testata:"",opera:"",riferimento:"",pagina:"",testo:""};showSc("testo-edit");}
+function editTesto(id){S.editTesto={...(S.biblioteca.find(t=>t.id===id)||{})};showSc("testo-edit");}
+function viewTesto(id){S.activeTesto=S.biblioteca.find(t=>t.id===id);showSc("testo-detail");}
+function delTesto(id){if(!confirm("Eliminare questo testo dalla Biblioteca?"))return;S.biblioteca=S.biblioteca.filter(t=>t.id!==id);if(S.activeTesto?.id===id)S.activeTesto=null;persist();showSc("biblioteca");}
+
+function saveTesto(){
+  const tipo=S.editTesto?.tipo||"articolo";
+  const testo={
+    ...(S.editTesto||{}),
+    autore:document.getElementById("tau")?.value?.trim()||"",
+    titolo:document.getElementById("tti")?.value?.trim()||"",
+    testata:tipo==="articolo"?(document.getElementById("tte")?.value?.trim()||""):"",
+    riferimento:tipo==="articolo"?(document.getElementById("tri")?.value?.trim()||""):"",
+    opera:tipo==="brano"?(document.getElementById("top")?.value?.trim()||""):"",
+    pagina:tipo==="brano"?(document.getElementById("tpg")?.value?.trim()||""):"",
+    testo:document.getElementById("tbo")?.value?.trim()||"",
+    id:S.editTesto?.id||uid(),
+    created:S.editTesto?.created||Date.now(),
+    tipo,
+  };
+  if(!testo.testo){alert("Il testo non può essere vuoto.");return;}
+  const i=S.biblioteca.findIndex(t=>t.id===testo.id);
+  if(i>=0){const a=[...S.biblioteca];a[i]=testo;S.biblioteca=a;}
+  else{S.biblioteca=[testo,...S.biblioteca];}
+  S.activeTesto=testo;persist();showSc("testo-detail");
+}
+
+// ── ATOMIZZATORE ──────────────────────────────────────────
+async function startAtomizza(testoId){
+  const t=S.biblioteca.find(t=>t.id===testoId);
+  if(!t)return;
+  if(!S.anthropicKey){showSc("impostazioni");return;}
+  S.atomSourceId=testoId;
+  S.atomStatus="loading";
+  S.atomCandidates=[];
+  S.atomChecked=[];
+  showSc("atomizza");
+
+  const prompt=`Sei un assistente che atomizza testi in "Note Glifate" per un sistema di annotazione personale.
+
+I glifi disponibili:
+- ☿ (Citazione): Frase che vale per come è scritta — aforismi, battute precise, frasi memorabili. Usa le parole esatte del testo.
+- ∆ (Pensiero): Concetto, tesi, ragionamento — puoi riformulare/sintetizzare. Riflessioni, analisi, conclusioni.
+- ⚙ (Azione): Fare, costruire, andare — luoghi, riferimenti pratici, ispirazioni operative.
+- ∅ (Dubbio): Domanda aperta, questione irrisolta — contraddizioni, incertezze, ipotesi.
+
+Regole:
+- Estrai SOLO frammenti che meritano davvero di essere conservati. Qualità > quantità. Max 8 note.
+- "title": lascia vuoto per citazioni brevi e pensieri autoevidenti. Usalo solo se aggiunge chiarezza.
+- "tags": 2-4 tag in minuscolo, con trattini se necessario (es. "critica-gastronomica").
+- Sii selettivo: preferisci 4 note eccellenti a 8 mediocri.
+
+Rispondi SOLO con un array JSON valido. Zero testo aggiuntivo. Zero backtick. Zero markdown.
+[{"glyph":"☿","title":"","body":"...","tags":["tag1","tag2"]}]
+
+Testo:
+${t.testo}`;
+
+  try{
+    const res=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "x-api-key":S.anthropicKey,
+        "anthropic-version":"2023-06-01",
+        "anthropic-dangerous-direct-browser-access":"true"
+      },
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:2000,messages:[{role:"user",content:prompt}]})
+    });
+    if(!res.ok){const e=await res.json();throw new Error(e.error?.message||"HTTP "+res.status);}
+    const data=await res.json();
+    const text=data.content.map(b=>b.text||"").join("");
+    const clean=text.replace(/```json|```/g,"").trim();
+    const candidates=JSON.parse(clean);
+    S.atomCandidates=candidates.map(c=>({
+      ...c,
+      _id:uid(),
+      fonte:{
+        tipo:t.tipo==="articolo"?"articolo":"libro",
+        autori:t.autore||"",
+        opera:t.tipo==="articolo"?t.testata:t.opera,
+        riferimento:t.riferimento||"",
+        pagina:t.pagina||""
+      }
+    }));
+    S.atomChecked=S.atomCandidates.map(c=>c._id);
+    S.atomStatus="done";
+  }catch(e){
+    S.atomStatus="error";
+    S.atomError=e.message;
+  }
+  rCnt();
+}
+
+function toggleCand(id){if(S.atomChecked.includes(id))S.atomChecked=S.atomChecked.filter(x=>x!==id);else S.atomChecked=[...S.atomChecked,id];rCnt();}
+function selectAllCands(){S.atomChecked=S.atomCandidates.map(c=>c._id);rCnt();}
+function deselectAllCands(){S.atomChecked=[];rCnt();}
+function changeCandGlyph(id,glyph){S.atomCandidates=S.atomCandidates.map(c=>c._id===id?{...c,glyph}:c);rCnt();}
+
+function importCands(){
+  const toImp=S.atomCandidates.filter(c=>S.atomChecked.includes(c._id));
+  const newNotes=toImp.map(c=>({
+    id:uid(),glyph:c.glyph,title:c.title||"",body:c.body,
+    tags:c.tags||[],pinned:false,created:Date.now(),
+    fonte:c.fonte||{tipo:"",autori:"",opera:"",riferimento:"",pagina:""}
+  }));
+  S.notes=[...newNotes,...S.notes];
+  persist();
+  S.atomStatus="idle";S.atomCandidates=[];S.atomChecked=[];
+  showSc("list");
+}
+
+// ── AZIONI NOTE ───────────────────────────────────────────
+function showSc(s){S.screen=s;closeSidebar();rCnt();}
+function setGlyph(g){S.fGlyph=g;if(S.screen==="list")rCnt();}
+function setTag(t){S.fTag=S.fTag===t?null:t;if(S.screen==="list")rCnt();}
+function setSort(s){S.sort=s;rCnt();}
+function clrF(){S.search="";S.fGlyph=null;S.fTag=null;rHdr();rCnt();}
+function newNote(){S.quickMode=false;S.editNote={glyph:"☿",title:"",body:"",tags:[],pinned:false,fonte:{tipo:"",autori:"",opera:"",riferimento:"",pagina:""}};showSc("edit");}
+function quickNote(){S.quickMode=true;S.editNote={glyph:"☿",title:"",body:"",tags:[],pinned:false,fonte:{tipo:"",autori:"",opera:"",riferimento:"",pagina:""}};showSc("edit");}
+function viewNote(id){S.activeNote=S.notes.find(n=>n.id===id);showSc("detail");}
+function editN(id){S.quickMode=false;S.editNote={...(S.notes.find(n=>n.id===id)||S.activeNote)};showSc("edit");}
+function pinN(id){S.notes=S.notes.map(n=>n.id===id?{...n,pinned:!n.pinned}:n);if(S.activeNote?.id===id)S.activeNote={...S.activeNote,pinned:!S.activeNote.pinned};persist();rCnt();}
+async function delN(id){if(S.fbCfg){try{await fbDel(S.fbCfg,id)}catch(e){}}S.notes=S.notes.filter(n=>n.id!==id);if(S.activeNote?.id===id)S.activeNote=null;lsSet("atomica_v5",S.notes);rCnt();}
+function setEG(g){const b=document.getElementById("eb")?.value||"";const ti=document.getElementById("et")?.value||"";const p=document.getElementById("ep")?.checked||false;S.editNote={...S.editNote,glyph:g,body:b,title:ti,pinned:p};rEdit();}
+function addET(){const i=document.getElementById("etag");if(!i)return;const t=i.value.trim().toLowerCase().replace(/\s+/g,"-");if(!t||(S.editNote.tags||[]).includes(t))return;S.editNote={...S.editNote,tags:[...(S.editNote.tags||[]),t]};i.value="";const d=document.getElementById("etd");if(d)d.innerHTML=(S.editNote.tags||[]).map(t=>`<span style="background:#f0ece4;border:1px solid #d8d0c4;border-radius:8px;padding:3px 9px;font-size:11px;color:#5a5040;margin:2px;display:inline-flex;align-items:center;gap:4px">${esc(t)}<button onclick="remET('${t}')" style="background:none;border:none;color:#b09070;font-size:13px;cursor:pointer;padding:0;line-height:1">×</button></span>`).join("");}
+function remET(t){S.editNote={...S.editNote,tags:(S.editNote.tags||[]).filter(x=>x!==t)};const d=document.getElementById("etd");if(d)d.innerHTML=(S.editNote.tags||[]).map(t=>`<span style="background:#f0ece4;border:1px solid #d8d0c4;border-radius:8px;padding:3px 9px;font-size:11px;color:#5a5040;margin:2px;display:inline-flex;align-items:center;gap:4px">${esc(t)}<button onclick="remET('${t}')" style="background:none;border:none;color:#b09070;font-size:13px;cursor:pointer;padding:0;line-height:1">×</button></span>`).join("");}
+function saveN(){const body=document.getElementById("eb")?.value?.trim()||"";if(!body)return;const title=document.getElementById("et")?.value?.trim()||"";const pinned=document.getElementById("ep")?.checked||false;const fonte=S.quickMode?{tipo:"",autori:"",opera:"",riferimento:"",pagina:""}:{tipo:document.getElementById("ftp")?.value||"",autori:document.getElementById("fau")?.value?.trim()||"",opera:document.getElementById("fop")?.value?.trim()||"",riferimento:document.getElementById("fri")?.value?.trim()||"",pagina:document.getElementById("fpg")?.value?.trim()||""};const note={...(S.editNote||{}),title,body,pinned,fonte,id:S.editNote?.id||uid(),created:S.editNote?.created||Date.now()};const i=S.notes.findIndex(n=>n.id===note.id);if(i>=0){const a=[...S.notes];a[i]=note;S.notes=a;}else{S.notes=[note,...S.notes];}S.activeNote=note;S.quickMode=false;persist();showSc("detail");}
+function doExp(){const ns=S.expScope==="pinned"?S.notes.filter(n=>n.pinned):S.notes;const c=S.expFmt==="json"?JSON.stringify(ns,null,2):toMarkdown(ns);dlFile(c,`atomica_${Date.now()}.${S.expFmt}`,S.expFmt==="json"?"application/json":"text/markdown");}
+async function connFb(){const pid=document.getElementById("fpid")?.value?.trim();const key=document.getElementById("fkey")?.value?.trim();if(!pid||!key)return;const errEl=document.getElementById("fberr");if(errEl)errEl.style.display="none";S.syncStatus="syncing";rHdr();try{const cfg={projectId:pid,apiKey:key};await fbFetch(cfg);await Promise.all(S.notes.map(n=>fbSave(cfg,n)));S.fbCfg=cfg;lsSet("atomica_fb",cfg);S.syncStatus="synced";rHdr();showSc("list");}catch(e){S.syncStatus="error";rHdr();if(errEl){errEl.textContent="Errore: "+e.message;errEl.style.display="block";}}}
+function discFb(){S.fbCfg=null;lsSet("atomica_fb",null);S.syncStatus="offline";rHdr();showSc("list");}
+function saveAK(){const k=document.getElementById("akkey")?.value?.trim()||"";S.anthropicKey=k;lsSet("atomica_ak",k);rHdr();showSc("list");}
+
+// ── INIT ──────────────────────────────────────────────────
+window.addEventListener("resize",()=>rHdr());
+rHdr();rCnt();
+if(S.fbCfg){S.syncStatus="syncing";rHdr();fbFetch(S.fbCfg).then(r=>{if(r.length>0){S.notes=r;lsSet("atomica_v5",S.notes);}S.syncStatus="synced";rHdr();rCnt();}).catch(()=>{S.syncStatus="error";rHdr();});}
+</script>
+</body>
+</html>
