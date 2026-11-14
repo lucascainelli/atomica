@@ -7,7 +7,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Atomica">
-<link id="pwa-manifest" rel="manifest">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
 <title>Atomica</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -854,9 +856,6 @@ async function forceSyncBib(){
 }
 
 // ── INIT ──────────────────────────────────────────────────
-// PWA manifest inline
-(()=>{const m={name:"Atomica",short_name:"Atomica",description:"Note Glifate",start_url:"./",display:"standalone",background_color:"#f5f2ed",theme_color:"#8b6914",icons:[{src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%238b6914'/><text y='.9em' font-size='80' x='10'>⚗</text></svg>",sizes:"any",type:"image/svg+xml"}]};const b=new Blob([JSON.stringify(m)],{type:"application/manifest+json"});document.getElementById("pwa-manifest").href=URL.createObjectURL(b);})();
-
 // Service worker per PWA
 if("serviceWorker"in navigator){navigator.serviceWorker.register("data:text/javascript,self.addEventListener('fetch',e=>e.respondWith(fetch(e.request).catch(()=>caches.match(e.request))))").catch(()=>{});}
 
