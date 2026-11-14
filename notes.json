@@ -1,0 +1,65 @@
+[
+  {
+    "id": "0244gsl3",
+    "glyph": "∆",
+    "title": "Trota salmonata: l'autentico che non esiste",
+    "body": "Guida Michelin 2027: l'Arbustico di Paestum porta in tavola la trota salmonata, un pesce che in natura non esiste, dal colore artificiale. Il simbolo dell'autenticità dichiarata e non praticata.",
+    "tags": [
+      "michelin",
+      "autenticità",
+      "trota-salmonata",
+      "paestum"
+    ],
+    "pinned": true,
+    "created": 1794563160000,
+    "fonte": {
+      "tipo": "articolo",
+      "autori": "Camillo Langone",
+      "opera": "Il Foglio",
+      "riferimento": "14/11/2026 · Preghiera",
+      "pagina": ""
+    }
+  },
+  {
+    "id": "rqjcu47d",
+    "glyph": "∆",
+    "title": "Stellati: tutti «del territorio», nessuno con un territorio",
+    "body": "La Guida Michelin 2027 si vanta di proposte sempre più autentiche e coerenti con il territorio. I nuovi entrati: Akoya, cucina giapponese a Torino; Mamesa a Burgusio (Bolzano) con carbonara, chawanmushi e tom kha kai; Casa Romano ad Alzano Lombardo con l'astice alla brace; Téa del Kosmo a Livigno, «approccio etico e sostenibile»: ideologico, quindi inautentico alla radice.",
+    "tags": [
+      "michelin",
+      "territorio",
+      "autenticità",
+      "ristorazione",
+      "stellati"
+    ],
+    "pinned": true,
+    "created": 1794563159000,
+    "fonte": {
+      "tipo": "articolo",
+      "autori": "Camillo Langone",
+      "opera": "Il Foglio",
+      "riferimento": "14/11/2026 · Preghiera",
+      "pagina": ""
+    }
+  },
+  {
+    "id": "uf7hdzgv",
+    "glyph": "☿",
+    "title": "Spigola, Golfo Aranci: vietato ai minori di 12 anni",
+    "body": "Potrebbe essere la frase-manifesto dell'intera ristorazione Michelin, un mondo senza futuro.",
+    "tags": [
+      "michelin",
+      "ristorazione",
+      "bambini"
+    ],
+    "pinned": false,
+    "created": 1794563158000,
+    "fonte": {
+      "tipo": "articolo",
+      "autori": "Camillo Langone",
+      "opera": "Il Foglio",
+      "riferimento": "14/11/2026 · Preghiera",
+      "pagina": ""
+    }
+  }
+]

@@ -861,6 +861,19 @@ async function forceSyncBib(){
   if(btn)btn.disabled=false;
 }
 
+// ── NOTE DA GITHUB (notes.json) ───────────────────────────
+// Il materiale nuovo si inserisce committando notes.json nel repo: ogni nota viene importata una sola volta.
+async function loadRepoNotes(){
+  try{
+    const r=await fetch("notes.json?"+Date.now());if(!r.ok)return;
+    const a=await r.json();if(!Array.isArray(a))return;
+    const seen=lsGet("atomica_seen",[]);const have=new Set(S.notes.map(n=>n.id));
+    const add=a.filter(n=>n&&n.id&&n.body&&!seen.includes(n.id)&&!have.has(n.id)).map(n=>({glyph:"☿",title:"",tags:[],pinned:false,created:Date.now(),...n,fonte:{tipo:"",autori:"",opera:"",riferimento:"",pagina:"",...(n.fonte||{})}}));
+    lsSet("atomica_seen",[...new Set([...seen,...a.map(n=>n.id)])]);
+    if(add.length){S.notes=[...add,...S.notes];persist();rCnt();}
+  }catch(e){}
+}
+
 // ── INIT ──────────────────────────────────────────────────
 // Service worker per PWA
 if("serviceWorker"in navigator){navigator.serviceWorker.register("data:text/javascript,self.addEventListener('fetch',e=>e.respondWith(fetch(e.request).catch(()=>caches.match(e.request))))").catch(()=>{});}
@@ -873,8 +886,8 @@ if(S.fbCfg){
     if(notes.length>0){S.notes=notes;lsSet("atomica_v5",notes);}
     if(bib.length>0){S.biblioteca=bib;lsSet("atomica_bib",bib);}
     S.syncStatus="synced";rHdr();rCnt();
-  }).catch(()=>{S.syncStatus="error";rHdr();});
-}
+  }).catch(()=>{S.syncStatus="error";rHdr();}).finally(loadRepoNotes);
+}else loadRepoNotes();
 </script>
 </body>
 </html>
