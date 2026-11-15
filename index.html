@@ -25,7 +25,7 @@ button{cursor:pointer;font-family:'Courier New',monospace}
 .tcard:active{background:#faf7f2;transform:scale(0.98)}
 .cand-card{background:#fff;border:2px solid #e0d8ce;border-radius:12px;padding:14px;transition:border-color 0.15s,background 0.15s;margin-bottom:10px}
 .cand-card.sel{border-color:#8b6914;background:#fffdf8}
-.pill{display:inline-block;background:#f0ece4;border:1px solid #d8d0c4;border-radius:9px;padding:2px 8px;font-size:10px;color:#6a5a40;margin:2px}
+.pill{display:inline-block;background:#ebe4d6;border:1px solid #bfb299;border-radius:10px;padding:3px 10px;font-size:13px;font-weight:500;color:#3a2f18;margin:3px}
 .sec-lbl{font-size:9px;color:#a09080;letter-spacing:2px;text-transform:uppercase;font-weight:600;margin-bottom:8px}
 .fld{margin-bottom:16px}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -199,7 +199,7 @@ function sidebarHtml(){
       <span style="font-size:9px;color:#b0a080;background:#f0ece4;border-radius:6px;padding:1px 6px">${c2}</span>
     </button>`;
   }).join("")+(S.fGlyph?`<button onclick="setGlyph(null);closeSidebar()" style="background:none;border:none;color:#a09070;font-size:10px;padding:2px 7px;margin-bottom:8px">✕ rimuovi filtro</button>`:"");
-  const tItems=allTags.map(t=>`<button onclick="setTag('${t}');closeSidebar()" style="background:${S.fTag===t?"#8b6914":"#ede9e3"};border:1px solid ${S.fTag===t?"#8b6914":"#d8d0c4"};border-radius:8px;padding:4px 9px;color:${S.fTag===t?"#fff":"#5a5040"};font-size:11px;margin:2px">#${t}</button>`).join("");
+  const tItems=allTags.map(t=>`<button onclick="setTag('${t}');closeSidebar()" style="background:${S.fTag===t?"#8b6914":"#ede9e3"};border:1px solid ${S.fTag===t?"#8b6914":"#d8d0c4"};border-radius:8px;padding:5px 10px;color:${S.fTag===t?"#fff":"#3a2f18"};font-size:13px;margin:2px">#${t}</button>`).join("");
   const soItems=[["created","Data"],["alpha","A→Z"],["glyph","Categoria"]].map(([k,l])=>`<button onclick="setSort('${k}')" style="display:block;width:100%;text-align:left;background:${S.sort===k?"#f5f0e8":"transparent"};border:1px solid ${S.sort===k?"#d8c890":"transparent"};border-radius:4px;padding:6px 8px;color:${S.sort===k?"#8b6914":"#6a6050"};font-size:12px;margin-bottom:3px;font-weight:${S.sort===k?"600":"400"}">${S.sort===k?"▸ ":"  "}${l}</button>`).join("");
   return`<div id="sidebar" style="background:#fff;border-right:1px solid #e0d8ce;width:240px;flex-shrink:0;overflow-y:auto;padding:16px 12px">
     <div style="margin-bottom:18px">
@@ -277,7 +277,7 @@ function rList(){
 function rDetail(){
   const n=S.activeNote;if(!n){showSc("list");return;}
   const g=GM[n.glyph]||GLYPHS[0];const isF=!hasTitolo(n);
-  const th=(n.tags||[]).map(t=>`<span class="pill" style="padding:4px 10px;font-size:11px">${t}</span>`).join("");
+  const th=(n.tags||[]).map(t=>`<span class="pill" style="padding:4px 10px;font-size:13px">${t}</span>`).join("");
   const f=n.fonte||{};
   const fonteHtml=f.tipo?`<div style="margin-top:24px;padding-top:18px;border-top:1px solid #e8e0d4">
     <div class="sec-lbl" style="margin-bottom:10px">Fonte</div>
