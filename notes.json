@@ -1,5 +1,127 @@
 [
   {
+    "glyph": "∆",
+    "title": "Segovia, cent'anni dal debutto italiano",
+    "body": "Dicembre 1926, Milano: debutto italiano di Andrés Segovia. La chitarra, strumento sottovalutato e legato al canto popolare, diventa solista da sala da concerto: la linea va da Tárrega a Llobet a Segovia, con Barrios e Alirio Díaz a tenere vivo il legame con la musica del popolo.",
+    "tags": [
+      "chitarra",
+      "segovia",
+      "tarrega",
+      "llobet",
+      "barrios",
+      "alirio-diaz"
+    ],
+    "pinned": false,
+    "fonte": {
+      "tipo": "articolo",
+      "autori": "Stefano Picciano",
+      "opera": "Il Foglio",
+      "riferimento": "21-22/11/2026 · Dolci e ambiziose chitarre",
+      "pagina": "XI"
+    },
+    "id": "9elywozc",
+    "created": 1795251000000
+  },
+  {
+    "glyph": "☿",
+    "title": "Debussy: la chitarra",
+    "body": "«La chitarra è un clavicembalo espressivo.» Lo disse a Llobet dopo un recital a Parigi.",
+    "tags": [
+      "chitarra",
+      "debussy",
+      "llobet"
+    ],
+    "pinned": false,
+    "fonte": {
+      "tipo": "citazione diretta",
+      "autori": "Claude Debussy",
+      "opera": "",
+      "riferimento": "riportata da Stefano Picciano, Il Foglio 21-22/11/2026",
+      "pagina": "XI"
+    },
+    "id": "89x1hok1",
+    "created": 1795250999000
+  },
+  {
+    "glyph": "☿",
+    "title": "Segovia: pensare alla musica",
+    "body": "«Bisogna pensare più alla musica che alla chitarra.»",
+    "tags": [
+      "chitarra",
+      "segovia",
+      "musica"
+    ],
+    "pinned": false,
+    "fonte": {
+      "tipo": "citazione diretta",
+      "autori": "Andrés Segovia",
+      "opera": "",
+      "riferimento": "raccomandazione ai suoi allievi, riportata da Stefano Picciano, Il Foglio 21-22/11/2026",
+      "pagina": "XI"
+    },
+    "id": "dkb9gh9g",
+    "created": 1795250998000
+  },
+  {
+    "glyph": "☿",
+    "title": "Tárrega, secondo un allievo",
+    "body": "Nessuno era giunto a «un tale livello di compenetrazione con la dimensione espressiva della chitarra».",
+    "tags": [
+      "chitarra",
+      "tarrega",
+      "espressività"
+    ],
+    "pinned": false,
+    "fonte": {
+      "tipo": "citazione diretta",
+      "autori": "Allievo di Francisco Tárrega",
+      "opera": "",
+      "riferimento": "riportata da Stefano Picciano, Il Foglio 21-22/11/2026",
+      "pagina": "XI"
+    },
+    "id": "hasa54mg",
+    "created": 1795250997000
+  },
+  {
+    "glyph": "☿",
+    "title": "Segovia 1926: il posto della chitarra",
+    "body": "Segovia era convinto che la chitarra avrebbe trovato «un posto nelle sale da concerto» alla pari degli altri strumenti.",
+    "tags": [
+      "chitarra",
+      "segovia",
+      "concerto"
+    ],
+    "pinned": false,
+    "fonte": {
+      "tipo": "citazione diretta",
+      "autori": "Andrés Segovia",
+      "opera": "",
+      "riferimento": "riportata da Stefano Picciano, Il Foglio 21-22/11/2026",
+      "pagina": "XI"
+    },
+    "id": "7761vi6b",
+    "created": 1795250996000
+  },
+  {
+    "glyph": "☿",
+    "title": "Segovia, patente di nobiltà",
+    "body": "La stampa del 1985 scrisse che aveva «dato alla chitarra classica la più bella patente di nobiltà».",
+    "tags": [
+      "chitarra",
+      "segovia"
+    ],
+    "pinned": false,
+    "fonte": {
+      "tipo": "articolo",
+      "autori": "Stefano Picciano",
+      "opera": "Il Foglio",
+      "riferimento": "21-22/11/2026 · Dolci e ambiziose chitarre (stampa italiana, 1985)",
+      "pagina": "XI"
+    },
+    "id": "j4ygh7dm",
+    "created": 1795250995000
+  },
+  {
     "id": "ttv6j8io",
     "glyph": "☿",
     "title": "L'amore nascosto: i samurai e Baudrillard",
